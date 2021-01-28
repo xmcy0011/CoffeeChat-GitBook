@@ -1,0 +1,19 @@
+1. 注册时的Salt生成
+@startuml
+WebBrowser -> WebBrowser: 1. 加密明文密码（md5算法）
+WebBrowser -> Server: 2. 注册请求：userName,encryptPwd
+Server -> Server: 3. 生成随机盐值Salt（CryptGenRandom函数）
+Server -> Server: 4. 拼接密码和盐计算整体散列值，pwdHash=md5(md5(encryptPwd)+Salt))
+Server -> MySQL: 5. 存储用户名、盐值(Salt)和密码散列值(pwdHash)等
+WebBrowser <-- Server: 6. 完成注册，返回结果
+@enduml
+
+2. 登录
+@startuml
+WebBrowser -> WebBrowser: 1. 加密明文密码（md5算法）
+WebBrowser -> Server: 2. 登录请求，携带：userName,encryptPwd 
+Server -> MySQL: 3. 根据用户名查询Salt,Hash
+Server -> Server: 4. 加盐计算密码散列值，tempHash=md5(md5(encryptPwd)+Salt))
+Server -> Server: 5. 是否和数据库中的相等，tempHash==Hash？
+WebBrowser <-- Server: 6. 登录结果result
+@enduml

@@ -14,4 +14,4 @@ CoffeeChat copyright © 2020
 email:xmcy0011@sina.com
 csdn:[https://blog.csdn.net/xmcy001122](https://blog.csdn.net/xmcy001122)
 wechat:
-![wechat](images/wechat.png)
+![wechat](./resources/wechat.png)
