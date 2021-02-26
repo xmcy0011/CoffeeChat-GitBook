@@ -32,6 +32,7 @@
     * [第10节 IDE:goland和clion](chapter4/10-goland-and-clion.md)
     * [第11节 敏感词算法和实现](chapter4/11-trie.md)
     * [第12节 设计安全的账号系统](chapter4/12-salted-password-hashing.md)
+    * [第13节 会话级别的加密实现](chapter4/13-secret-chat-encryption.md)
 * [第四章 部署](chapter5/README.md)
     * [第1节 CI/CD持续交付](chapter5/1-cicd-devops.md)
     * [第2节 Jenkins](chapter5/2-jenkins.md)
