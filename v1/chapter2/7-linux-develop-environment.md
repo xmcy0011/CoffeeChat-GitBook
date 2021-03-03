@@ -7,7 +7,9 @@
 ## 常用Linux发行版
 ### CentOS 6/7
 
-CentOS是目前国内互联网公司最喜欢用的Linux发行版，作者所在公司也在使用，主要以CentOS 6和7为主。
+CentOS是目前国内互联网公司最喜欢用的Linux发行版，作者所在公司也在使用，主要以CentOS 6和7为主，**一般都是用作服务器**，也有一部分开发者通过虚拟机安装GUI在CentOS下开发调试，相比Ubuntu界面稍微丑一点，但是部署方便，不用折腾Ubuntu和CentOS包之间的差异。
+
+2021.03.03 更新：CentOS 6官方已经不再维护，建议至少使用CentOS 7，CentOS 8都已经出来8.4以上了，也可以尝试。
 
 附：[为什么国内互联网公司喜欢用Centos而不是Ubuntu/Debian？](https://www.zhihu.com/question/22814858/answer/1021837340)
 
@@ -19,15 +21,39 @@ CentOS是目前国内互联网公司最喜欢用的Linux发行版，作者所在
 - 本地编译+GUI界面，比如CentOS选择带界面安装，搭配Eclipse编辑器
 - 追求美观的，可能会使用Ubuntu/Debian系统，或者有条件的也可以适用MacOS（作者2018年开始是这种方式）
 
-所以Ubuntu/Debian一般比较适合个人开发环境。
+所以Ubuntu/Debian**一般比较适合个人开发环境**。下面是一张CentOS7（上）和Ubuntu20（下）的界面对比图：
+![centos7](../images/chapter2/screenhost-centos7.png)  
+![centos7](../images/chapter2/screenhost-ubuntu20.png)
 
-我个人比较喜欢Ubuntu+Clion（跨平台C/C++IDE，来自于Intellij）的配合，目前的话是MacOS+clion来开发LinuxC/C++服务端，当然MacOS
+我个人比较喜欢Ubuntu，对于新手，还是推荐使用CentOS的GUI，这样部署的话能方便一些。
+
+目前作者在Linux下进行C/C++开发，主要有2套环境，可供读者参考：
+- Ubuntu系列：
+     - 编辑器IDE：Clion（跨平台C/C++IDE，来自于Intellij）、Goland、VS Code
+     - 编译器：gcc、g++
+     - API手册：linux man pages
+     - Git客户端：GitKraken（收费），可直接在Ubuntu Software中搜索替代品
+- MacOS系列：
+     - 编辑器IDE：Clion、Goland、VS Code
+     - 编译器：clang
+     - API手册：Dash（6.0之后开始收费了，可以下载5.x的版本免费使用）、BSD System Calls Manual
+     - Git客户端：Sourcetree（免费，好用，支持windows和mac，要是能支持ubutun就更好了）
+
+如果要尝试使用ubuntu20，那这里有一篇文章或许能帮助到你。  
+- [ubuntu20搭建C++开发环境](https://blog.csdn.net/xmcy001122/article/details/114304795)
 
 ## IDE推荐
 除了VS Code和Clion之外，还有很多其他编辑器，如QT Creator，vim，eclipse等。当然这些我没有用过，就一笔带过了，下面推荐2款非常流行的跨平台IDE。
 
 ### VS Code(推荐)
+
+轻量级IDE，适合前端开发、写文档和看代码等等，因为其具有丰富的插件和跨平台的特性，不管是Java、Python、Go、C++等开发都必装的一款软件。
+
+VS Code完全免费，由微软维护，可以在[官网下载](https://code.visualstudio.com/)。
+
 ### Clion(推荐)
+
+跨平台C++开发工具，和Intellij Idea是一家公司，相比Windows下的Visual Studio也相差无几。在Mac、Linux、Ubuntu等环境下开发C/C++，强力推荐，代码高亮、模板、跳转、查找定义和引用、断点调试等等功能应有尽有，使用CMake来管理项目。
 
 ## 在线API手册
 
@@ -122,6 +148,7 @@ DESCRIPTION 描述
 
 ## Dash for mac
 
-有一款很好用的API查看软件，但是只有mac版本，大家可以搜索Dash了解详情。
+有一款很好用的API查看软件，从6.0之后开始收费，可以下载5.0的版本（链接: https://pan.baidu.com/s/1JHNDbiwejRdeRWOoRmLZlg  密码: p040）。其还有一个Ubuntu的开源免费版本**Zeal**可以尝试，只不过好像无法安装Linux man pages，可能用处有限。
 
-## CentOS 7常用命令
+![1](../images/chapter2/screenhost-dash1.png)  
+![2](../images/chapter2/screenhost-dash2.png)
