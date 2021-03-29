@@ -88,16 +88,31 @@ struct sockaddr {
 但在实际的TCP编程中（IPV4），我们使用 **sockaddr_in** 存储IP地址和端口信息，他的定义如下：
 ```cpp
 // <netinet/in.h>
+
+typedef uint32_t in_addr_t;
+struct in_addr{
+    in_addr_t s_addr; // IP地址，使用inet_addr()转换字符串
+};
+
 struct sockaddr_in {
    __uint8_t       sin_len;
-   sa_family_t     sin_family;
-   in_port_t       sin_port;
-   struct  in_addr sin_addr;
+   sa_family_t     sin_family; // IP类型
+   in_port_t       sin_port;   // 端口
+   struct  in_addr sin_addr;   // 
    char            sin_zero[8];
 };
 ```
 
-### 流Socket
+示例就像bind中的代码：
+```c++
+struct sockaddr_in addr{};
+addr.sin_family = AF_INET;   // IPV4
+addr.sin_port = htons(8088); // 转成网络大端序
+addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // #include <arpa/inet.h> // inet_addr
+```
+
+### 流Socket（TCP）
+
 流 socket 的运作与电话系统类似。
 1. socket()系统调用将会创建一个 socket，这等价于安装一个电话。为使两个应用程序能 够通信，每个应用程序都必须要创建一个 socket。
 2. 通过一个流 socket 通信类似于一个电话呼叫。一个应用程序在进行通信之前必须要将 其 socket 连接到另一个应用程序的 socket 上。两个 socket 的连接过程如下:
@@ -115,7 +130,7 @@ struct sockaddr_in {
 
 在大多数使用流 socket 的应用程序中，服务器会执行被动式打开，而客户端会执行主动式打开。
 
-#### 监听接入连接:listen()
+#### 监听接入连接：listen()
 
 listen()系统调用将文件描述符 sockfd 引用的流 socket 标记为被动。这个 socket 后面会被用来接受来自其他(主动的)socket 的连接。
 
@@ -132,8 +147,251 @@ int listen(int socket, int backlog); // Returns 0 on success,or -1 on error
 
 内核必须要记录所有未决的连接请求的相关信息，这样后续的 accept()就能够处理这些请求 了。backlog 参数允许限制这种未决连接的数量。在这个限制之内的连接请求会立即成功，之外的连接请求就 会阻塞直到一个未决的连接被接受(通过 accept())，并从未决连接队列删除为止。在 Linux 上，这个常量的值被定义成了 **#define SOMAXCONN 128** （Ubuntu上是4096,mac上是128）。但从内核 2.4.25 起，Linux 允许在运行时通过 Linux 特有的/proc/sys/net/core/somaxconn 文件来调整这个限制
 
-### 实战
-#### TCP优化参数
+#### 接受连接：accept()
+
+**accept()** 系统调用在文件描述符sockfd 引用的监听流socket上接受一个接入请求。如果在调用**accept()** 时不存在未决的连接，**那么调用就会阻塞直到有新连接请求到达为止**。
+
+```c
+#include <sys/socket.h>
+
+// Returns 0 on success,or -1 on error
+int accept (int sockfd, struct sockaddr * addr, socklen_t * addr_len);
+```
+
+**理解 accept() 的关键点是他会创建一个新socket，并且正是这个新 socket 会与执行 connect() 的对等socket进行连接**。accept() 调用返回的函数结果是已连接的 socket 的文件描述符。监听socket（sockfd）会保持打开状态，并且可以被用来接受后续的连接。
+
+示例如下：
+```c++
+while (true) {
+    struct sockaddr_in peerAddr{};
+    socklen_t sockLen = sizeof(sockaddr_in);
+    // will sleep, until one connection coming
+    int fd = ::accept(listenFd, (sockaddr *) &peerAddr, &sockLen);
+    if (fd == kSocketError) {
+        return 0;
+    }
+
+    // 此时可以使用 recv() 和 send() 调用，接收和发送数据
+}
+```
+
+#### 连接到对等socket：connect()
+
+**connect()** 系统调用将文件描述符 sockfd 引用的主动 socket 连接到地址通过 addr 和 addrlen 指定的监听 socket 上，**通常是客户端调用**。
+
+```c
+#include <sys/socket.h>
+
+// Returns 0 on success,or -1 on error
+int connect (int sockfd, const struct sockaddr * addr, socklen_t addr_len);
+```
+
+addr 和 addr_len参数的指定方式与 bind() 调用中的相同。
+
+**如果 connect() 失败并且希望重新进行连接，那么SUSv3规定完成这个任务的方法是关闭这个socket，创新一个新的socket来重新进行连接。**
+
+#### 流socket I/O（收发数据）
+
+一对连接的流 socket 在两个断点之间提供了一个双向通信信道，如下图：
+![images](../images/chapter2/stream-socket-io.png)
+
+连接流 socket 上 I/O 的语义与管道上 I/O 的语义类似。
+- 要执行 I/O 需要使用 read() 和 write() 系统调用，针对socket，可以使用特有的 **recv()** 和 **send()** 调用。由于socket是双向的，因此在连接的两端都可以使用这两个调用。
+- 一个 socket 可以使用 close() 系统调用来个关闭或在应用程序终止之后关闭。**之后当对等应用程序试图从连接的另一端读取数据时，将会收到文件结束（当所有缓冲数据都被读取之后）**。如果对等应用程序试图向其 socket 写入数据，那么它就会收到一个 SIGPIPE 信号，并且系统调用会返回 EPIPE错误。
+
+示例如下（这里是一个echo服务，即服务端向客户端回复同样的内容）：
+```c++
+while (true) { // 注意：这里是一个死循环，通常实际中不会这样干
+    char buffer[1024] = {};
+    // 没有数据时会阻塞
+    ssize_t len = recv(fd, buffer, sizeof(buffer), 0); // wait
+    if (len == kSocketError) {
+        std::cout << "recv error:" << errno << std::endl;
+        break;
+
+    } else if (len == 0) { // 返回0代表对端关闭了连接
+        std::cout << "remote close the socket, error:" << errno << std::endl;
+        break;
+
+    } else {
+        std::cout << "recv: " << buffer << ",len=" << len << std::endl;
+        // echo
+        len = send(fd, buffer, len, 0);
+        if (len == kSocketError) {
+            std::cout << "send error:" << errno << std::endl;
+            break;
+        }
+    }
+}
+```
+
+#### 连接终止：close()
+
+终止一个流 socket 连接的常见方式是调用 close()。如果多个文件描述符引用一个socket，那么当所有描述符被关闭之后连接就会终止。close()调用会将双向通道的两端都关闭，shutdown()调用提供了更精细的控制，可只关闭连接的一端（这样就无法写入，只能读取了，可以实现一些在关闭前需要确认的业务）。
+
+关于close()和shutdown()的区别：
+> https://blog.csdn.net/u013840081/article/details/78388527
+> - shutdown可以指定在某个方向上终止连接，通过指定标志：SHUT_RD, SHUT_WR, SHUT_RDWR。比如指定SHUT_WR后可以继续读数据，但不能写入了。而close是两个方向上终止连接。
+> - close会将描述符的引用计数减一，如果引用计数变为0就关闭描述符，发送FIN。而shutdown不管引用计数，直接发送FIN终止连接。所以在多线程下操作同一个socket描述符，一个线程调用shutdown会使其他线程无法使用这个描述符，而调用close就不会影响到其他线程。
+
+## 实战
+
+### 完整的示例：单线程版
+
+#### Server
+
+```c++
+#include <iostream>
+
+#include <cstring>
+#include <cerrno>
+#include <netinet/in.h> // ipv4: PF_INET,sockaddr_in ,v6:PF_INET6,sockaddr_in6
+#include <sys/socket.h> // socket,bind,listen,accept
+#include <unistd.h>     // read,close
+#include <arpa/inet.h>  // inet_addr
+
+const int kSocketError = -1;
+
+/** @fn main
+  * @brief 演示socket的基础调用demo，使用了默认同步I/O阻塞+单线程的方式，
+  * 即同时只能处理1个连接，直到这个连接断开后才能处理下一个连接。
+  * @return
+  */
+int main() {
+    // 创建socket
+    int listenFd = ::socket(PF_INET, SOCK_STREAM, 0);
+    if (listenFd == kSocketError) {
+        std::cout << "create socket error:" << errno << std::endl;
+        return 0;
+    }
+    std::cout << "create socket" << std::endl;
+
+    struct sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(8088);
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // 绑定到本机回环地址的8088端口
+    int ret = ::bind(listenFd, (sockaddr *) &addr, sizeof(addr));
+    if (ret == kSocketError) {
+        std::cout << "bind socket error:" << errno << std::endl;
+        return 0;
+    }
+
+    std::cout << "bind success,start listen..." << std::endl;
+    // 监听，本质是标识文件描述符为被动socket
+    ret = ::listen(listenFd, SOMAXCONN);
+    if (ret == kSocketError) {
+        std::cout << "listen error:" << errno << std::endl;
+        return 0;
+    }
+
+    // 死循环，永不退出
+    while (true) {
+        struct sockaddr_in peerAddr{};
+        socklen_t sockLen = sizeof(sockaddr_in);
+        // 接受新的连接，会一直阻塞，直到新连接的到来。
+        int fd = ::accept(listenFd, (sockaddr *) &peerAddr, &sockLen);
+        if (fd == kSocketError) {
+            return 0;
+        }
+        std::cout << "new connect coming,accept..." << std::endl;
+        while (true) {
+            char buffer[1024] = {};
+            // 没有数据时会阻塞
+            ssize_t len = recv(fd, buffer, sizeof(buffer), 0); // wait
+            if (len == kSocketError) {
+                std::cout << "recv error:" << errno << std::endl;
+                break;
+
+            } else if (len == 0) {
+                std::cout << "recv error:" << errno << std::endl;
+                break;
+
+            } else {
+                std::cout << "recv: " << buffer << ",len=" << len << std::endl;
+                // echo
+                len = send(fd, buffer, len, 0);
+                if (len == kSocketError) {
+                    std::cout << "send error:" << errno << std::endl;
+                    break;
+                }
+            }
+        }
+
+        // 关闭socket
+        ::close(fd);
+        std::cout << "remote " << ::inet_ntoa(peerAddr.sin_addr) << "close connection" << std::endl;
+    }
+
+    return 0;
+}
+```
+
+#### Client
+
+```c++
+#include <iostream>
+
+#include <cerrno>
+#include <thread>
+#include <sys/socket.h> // bind,connect
+#include <netinet/in.h> // sockaddr_in
+#include <arpa/inet.h>  // inet_addr()
+#include <unistd.h>     // close
+
+const int kSocketError = -1;
+
+int main() {
+    // 创建socket
+    int fd = socket(PF_INET, SOCK_STREAM, 0);
+    if (fd == kSocketError) {
+        std::cout << "socket error:" << errno << std::endl;
+        return 0;
+    }
+
+    struct sockaddr_in serverIp{};
+    serverIp.sin_family = AF_INET;
+    serverIp.sin_port = htons(8088);
+    serverIp.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // 连接到服务器
+    std::cout << "connect remote" << std::endl;
+    int ret = ::connect(fd, (sockaddr *) &serverIp, sizeof(serverIp));
+    if (ret == kSocketError) {
+        std::cout << "connect error:" << errno << std::endl;
+        return 0;
+    }
+
+    char buffer[1024] = {0};
+    char recvBuffer[1024] = {0};
+    for (int i = 0; i < 10; ++i) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        int len = sprintf(buffer, "hello %d", i);
+        // 发送
+        ret = ::send(fd, buffer, len, 0);
+        if (ret == kSocketError) {
+            std::cout << "send error:" << errno << std::endl;
+            break;
+        }
+
+        // 阻塞，直到服务器返回数据
+        ret = ::recv(fd, recvBuffer, sizeof(recvBuffer), 0);
+        if (ret == kSocketError) {
+            std::cout << "send error:" << errno << std::endl;
+            break;
+        }
+        std::cout << "recv from:" << recvBuffer << std::endl;
+    }
+
+    // 关闭socket的两端，关闭后，如服务的recv()阻塞会立即返回0，标志客户端的连接已端开
+    ::close(fd);
+
+    return 0;
+}
+```
+
+### TCP优化参数
 一览：
 ```cpp
 setSoLinger(false, 0);// 不延迟关闭，减少TIME_WAIT套接字的数量
@@ -145,7 +403,7 @@ setIntOption(SO_RCVBUF, 640000);
 setTcpNoDelay(true);
 ```
 
-#### SO_LINGER详解
+### SO_LINGER详解
 
 SO_LINGER：用来设置延迟关闭的时间，等待套接字发送缓冲区中的数据发送完成。
 来自：[https://www.cnblogs.com/jingzhishen/p/5543627.html](https://www.cnblogs.com/jingzhishen/p/5543627.html)（TCP协议中的SO_LINGER选项）：
@@ -163,7 +421,7 @@ SO_LINGER：用来设置延迟关闭的时间，等待套接字发送缓冲区�
 3. **消耗更多的额外资源**。TCP协议是一个通用的传输层协议，不关心上层具体的业务，如果要延迟关闭连接，最好是结合自己的业务和场景自己来管理，不要依赖这个选项。nginx的延迟关闭就是自己来管理的，觉得要比直接使用SO_LINGER选项好一些，并且不会导致进程阻塞。 ngxin在发送错误信息后，会等待一段时间，让用户把所有的数据都发送完。超过等待时间后，会直接关闭连接。通过lingering_close，nginx可以保持更好的客户端兼容性，避免客户端被reset掉。
 4. **SO_LINGER还有一个作用就是用来减少TIME_WAIT套接字的数量**。在设置SO_LINGER选项时，指定等待时间为0，此时调用主动关闭时不会发送FIN来结束连接，而是直接将连接设置为CLOSE状态，清除套接字中的发送和接收缓冲区，直接对对端发送RST包。
 
-#### PF_INET 和 AF_INET
+### PF_INET 和 AF_INET
 
 可以参考：http://blog.sina.com.cn/s/blog_6ac245850100yz2b.html
 

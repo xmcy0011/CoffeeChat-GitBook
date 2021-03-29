@@ -63,7 +63,7 @@
 
 ## 3.29 - 4.2
 
-- [ ] [第9节 Linux Socket API介绍](chapter2/9-linux-socket-api-intro.md)
+- [x] [第9节 Linux Socket API介绍](chapter2/9-linux-socket-api-intro.md) 100%
 - [ ] [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md)
 - [ ] [第9节 coredump调试技术](chapter4/9-coredump.md)
 - [ ] [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
