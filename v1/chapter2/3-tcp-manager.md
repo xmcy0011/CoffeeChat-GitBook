@@ -140,7 +140,7 @@ int recvfrom(int socket, void *buf, int len, unsigned int flags,
 
 再引用来自于 [[知乎：IO 多路复用是什么意思？罗志宇的回答](https://www.zhihu.com/question/32163005)] 一图：
 
-![i/o multiplexing](../images/i:o multiplexing.gif)
+![i/o multiplexing](../images/io multiplexing.gif)
 
 >  **I/O multiplexing 这里面的 multiplexing 指的其实是在单个线程通过记录跟踪每一个Sock(I/O流)的状态(对应空管塔里面的Fight progress strip槽)来同时管理多个I/O流**. 发明它的原因，是尽量多的提高服务器的吞吐能力。
 >
