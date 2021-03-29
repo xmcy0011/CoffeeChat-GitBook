@@ -11,6 +11,12 @@ $ npm -v # npm 是node自带的包管理工具
 7.6.3
 $ npm config set registry https://registry.npm.taobao.org # 使用淘宝镜像，解决安装npm包慢的问题
 $ npm config get registry # 查看是否生效
+
+# windows
+$ npm config set prefix "D:\nodejs\node_global" # 全局模块所在的路径
+$ npm config set cache "D:\nodejs\node_cache"   # 缓存cache的路径
+$ # D:\nodejs\node_global 加入环境变量
+
 $ npm install gitbook-cli -g # 安装gitbook命令行，-g 全局安装
 $ gitbook --version # 此时可以使用gitbook命令了
 ```
