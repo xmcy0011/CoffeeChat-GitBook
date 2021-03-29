@@ -1,6 +1,7 @@
 # Gitbook To Do
 
-# 目录
+# Summary
+
 * [x] [前言](README.md) 100%
 * [x] [准备](chapter1/README.md) 100%
     * [ ] [学习资源推荐](chapter1/book.md) 10%
@@ -38,6 +39,7 @@
     * [ ] [第13节 会话级别的加密实现](chapter4/13-secret-chat-encryption.md) 10%
     * [ ] [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md)
     * [ ] [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
+    * [ ] [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)
 * [ ] [第四章 部署](chapter5/README.md)
     * [ ] [第1节 部署shell脚本](chapter5/1-setup-shell.md)
     * [ ] [第2节 CI/CD持续交付](chapter5/2-cicd-devops.md)
@@ -59,8 +61,11 @@
     * [ ] [Telegram](chapter7/teamtalk.md) 0%
 
 
-- 3.29 - 4.2
-    - [ ] [第9节 Linux Socket API介绍](chapter2/9-linux-socket-api-intro.md)
-    - [ ] [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md)
-    - [ ] [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
+## 3.29 - 4.2
 
+- [ ] [第9节 Linux Socket API介绍](chapter2/9-linux-socket-api-intro.md)
+- [ ] [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md)
+- [ ] [第9节 coredump调试技术](chapter4/9-coredump.md)
+- [ ] [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
+- [ ] [第3节 如何管理大量TCP连接](chapter2/3-tcp-manager.md) 30%
+* [ ] [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)

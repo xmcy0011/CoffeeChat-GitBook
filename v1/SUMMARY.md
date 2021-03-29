@@ -36,6 +36,7 @@
     * [第13节 会话级别的加密实现](chapter4/13-secret-chat-encryption.md)
     * [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md)
     * [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
+    * [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)
 * [第四章 部署](chapter5/README.md)
     * [第1节 部署shell脚本](chapter5/1-setup-shell.md)
     * [第2节 CI/CD持续交付](chapter5/2-cicd-devops.md)
