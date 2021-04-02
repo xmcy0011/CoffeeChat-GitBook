@@ -1,7 +1,7 @@
 # CoffeeChat-GitBook
 getting start with instant message develop(IM开发入门指南)
 
-see: (GitHub Pages)[https://xmcy0011.github.io/CoffeeChat-GitBook/]
+see: [GitHub Pages](https://xmcy0011.github.io/CoffeeChat-GitBook/)
 
 ## Summary
 
