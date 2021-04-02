@@ -376,6 +376,8 @@ while (true) {
 
 为了解决单进程单线程下只能同时处理一个连接的问题，我们引入多线程技术，核心思路是把 **recv()** 放在单独的线程中执行，这样最外层的while循环得以执行到 **accept()** ，即意味着可接收新的连接的到来，真正的实现了服务器的功能，可以处理很多个TCP客户端。
 
+![io-multiplexing-thread-compare](../images/chapter2/io-multiplexing-thread-compare.png)
+
 下面是一个实例（注意，其他部分没变，只是在上一节中while循环的代码中，引入了线程而已）：
 
 ```c++
