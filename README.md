@@ -1,6 +1,8 @@
 # CoffeeChat-GitBook
 getting start with instant message develop(IM开发入门指南)
 
+see: (GitHub Pages)[https://xmcy0011.github.io/CoffeeChat-GitBook/]
+
 ## Summary
 
 * [x] [前言](v1/README.md) 100%
@@ -63,7 +65,11 @@ getting start with instant message develop(IM开发入门指南)
 
 ## Author
 
-CoffeeChat copyright © 2020
+CoffeeChat copyright © 2021
+
+## 授权许可
+
+除特别声明外，本书中的内容使用[CC BY-SA 3.0 License](https://creativecommons.org/licenses/by-sa/3.0/deed.zh)（创作共用 署名-相同方式共享3.0许可协议）授权 。
 
 ## Contact
 
