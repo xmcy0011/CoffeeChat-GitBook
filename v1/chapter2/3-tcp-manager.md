@@ -480,6 +480,7 @@ $ ulimit -s
 
 ##### select/poll
 
+
 因为poll和select类似，这里的代码就以 select 为例来说明：
 ```c++
 #include <iostream>
@@ -647,6 +648,8 @@ int main() {
     return 0;
 }
 ```
+
+[代码解读视频：Bilibili](待补充)
 
  **select()** 和 **poll()** 存在的问题（《Linux-UNIX系统编程手册 63.2.5章》）：
 - 每次调用 select()或 poll()，内核都必须检查所有被指定的文件描述符，看它们是否处
@@ -1062,21 +1065,23 @@ int main() {
 }
 ```
 
+所有代码在这里：[github](https://github.com/xmcy0011/geeker-skills/tree/master/code/tcp)
+
+[代码解读视频：Bilibili](待补充)
+
 至此，三种I/O模型介绍完毕，下面再补充介绍一下epoll的2种模式：
 - LT：水平触发（默认），epoll 会告诉我们何时能在文件描述符上以非阻塞的方式执行 I/O 操作，**对于存在未读完的数据，下一次调用epoll_wait时还会触发**。
-- ET：边缘触发，和LT相比，**无论是否读完，只触发一次，直到下一次EPOLLIN事件到来**
-
-LT（水平触发）优缺点：
-- 优点：简单，易于编码，未读完的数据下次还能继续读，不易遗漏
-- 缺点：在并发量高的时候，epoll_wait返回的就绪队列比较大，遍历比较耗时。因此LT适用于并发量小的情况
-
-ET（边缘触发）优缺点：
-- 优点：并发量大的时候，就绪队列要比LT小得多，效率更高
-- 缺点：复杂，难以编码，需要一次读完，有时会遗漏
+    - 优点：简单，易于编码，未读完的数据下次还能继续读，不易遗漏
+    - 缺点：在并发量高的时候，epoll_wait返回的就绪队列比较大，遍历比较耗时。因此LT适用于并发量小的情况
+- ET：边缘触发，和LT相比，**无论是否读完，只触发一次，直到下一次EPOLLIN事件到来**。ET模式在很大程度上减少了epoll事件被重复触发的次数，因此效率要比LT模式高。只支持非阻塞I/O，以避免由于一个文件句柄的阻塞读/阻塞写操作把处理多个文件描述符的任务饿死。
+    - 优点：并发量大的时候，就绪队列要比LT小得多，效率更高
+    - 缺点：复杂，难以编码，需要一次读完，有时会遗漏；可能会遇到文件描述符饥饿问题（有1个描述符上有大量的输入，使其他描述符处于饥饿状态），轮转调度（round-robin）方式循环处理带来了更高的复杂度。
 
 参考：
 - [Linux I/O复用中select poll epoll模型的介绍及其优缺点的比较](https://zhuanlan.zhihu.com/p/141447239)
 - [Linux IO模式及 select、poll、epoll详解](https://segmentfault.com/a/1190000003063859#articleHeader0)
+- [EPOLL中LT和ET优缺点](https://blog.csdn.net/a13602955218/article/details/105325146)
+
 
 ##### 三种I/O模型比较
 
@@ -1084,8 +1089,121 @@ ET（边缘触发）优缺点：
 
 #### 2种设计模式
 
-##### reactor(unix)
-##### preactor(windows)
+在初步掌握了epoll的api之后，我们需要更进一步探讨一下实际的环境中是如何使用epoll的。
+
+因为I/O Multiplexing技术的出现，目前市面上高性能的主流开源网络库使用的事件驱动模型主要分成2大阵营：
+- Reactor模型（反应器）：以linux(epoll)、darwin/macos(kqueue)2个平台为主，在Linux下开发网络服务器程序的主流模型。使用这种模型的有：
+    - [muduo](https://github.com/chenshuo/muduo), [evpp](https://github.com/Qihoo360/evpp)
+    - [libevent](https://github.com/libevent/libevent), libev
+    - ACE, [Poco C++ Libraries](https://github.com/pocoproject/poco)
+    - Java NIO，包括 [Apache Mina](https://github.com/mina-deploy/mina) 和 [Netty](https://github.com/netty/netty) 
+- Preactor模型（主动器）：epoll由于是linux特有，故windows下对应的是iocp（Input/Output Completion Port）技术，该模型通常在windows上使用。不过跨平台的 [asio](https://github.com/chriskohlhoff/asio/tree/master/asio) 库（据说会作为C++20的网络标准库）也是使用的这种模型，可能是为了兼容windows。
+
+这2种模型最本质的区别是：**Reactor使用的是同步非阻塞I/O，而Preactor使用的是异步（非阻塞？）I/O**（需要操作系统支持），当下Preactor用的不多，**Linux/MacOs下主要以Reactor为主**。
+
+##### Reactor(unix)
+
+简单的来说，Reactor模型就是 **non-blocking IO** + **IO Multiplexing**，它的本质是 [事件驱动编程](http://www.blogjava.net/xyz98/archive/2008/11/24/239393.html) 的一种实现，事件驱动在各种界面开发（Web/Windows/iOS/Android）下会经常用到，比如html中 **input（按钮）** 提供了 **[onclick()](https://www.w3school.com.cn/tags/html_ref_eventattributes.asp)** 事件，当鼠标点击时，则由浏览器回调指定的函数进行相关的操作。  
+
+**java.util.concurrent** 包的作者Doug Lea，在 [《Scalable IO in Java》](http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf)（[翻译](https://www.cnblogs.com/dafanjoy/p/11217708.html)） 一篇分享中对reactor进行了归纳，主要有3种使用方式：
+- **单Reactor单线程模型**：基础模型，只有1个线程处理事件循环和分发事件，事件处理函数中不允许出现阻塞。**优点是简单，不涉及并发问题。缺点是无法充分利用CPU，吞吐量相对多线程模型较小**。
+- **单Reactor多线程模型**：用的比较多的模型，在事件处理部分通过线程池方式，**可以充分利用CPU资源**。
+- **多Reactor多线程模型**：未知，待补充。
+
+根据《Pattern-oriented software architecture. Volume 2》中对Reactor的解释，主要包含以下5个部分：
+![event-loop-reactor-participants.png](../images/chapter2/event-loop-reactor-participants.png)
+- **Handle**（句柄集事件源）：在Linux中指文件描述符，以socket fd举例，其上的I/O事件由操作系统触发，这样我们可以使用 **accept()** 或者 **recv()/read()** 进行新连接的建立和数据收发处理。
+- **Synchronous Event Demultiplexer**（同步事件多路分发器）：通常指select/poll,epoll等I/O多路复用，程序首先将Handle（句柄）以及对应的事件注册到Synchronous Event Demultiplexer上；当有事件到达时，Synchronous Event Demultiplexer就会通知Reactor调用事件处理程序进行处理。
+- **Reactor**（反应器）：提供注册和移除事件的功能，以及执行事件循环，不停的接收系统触发的事件，当有事件进入"就绪"状态时，调用注册事件的回调函数处理事件。
+- **Event Handler**（事件处理程序）：定义了一个接口（回调函数），主要是给具体事件处理程序传递事件数据。
+- **Concrete Event Handler**（具体事件处理程序）：事件的真正处理者，将处理结果写入到句柄上，返回给调用者。
+
+在介绍这种模式之前，我们先来看一下EventLoop。
+
+###### EventLoop（事件循环）
+
+![waht-event-loop.png](../images/chapter2/waht-event-loop.png)
+
+EventLoop，也就是事件循环，主要的功能是：
+1. **封装epoll**，对外提供类似 **run()** 函数（libevent是event_base_dispatch），其内是一个无限循环，不停的调用 **epoll_wait()**，处理I/O事件，回调到对应的socket fd对象进行处理。示例代码如下（来自于muduo/EventLoop.cc）：
+
+2. 处理Socket I/O事件的同时，**提供定时器任务的支持**。[高性能定时器的实现可以参考这里](https://www.zhihu.com/zvideo/1339940511960944641)。
+
+下面，我们通过一段具体的代码来看一下什么叫事件循环（来自于TeamTalk，server/src/base/EventDispatch.cpp）：
+```c++
+void CEventDispatch::StartDispatch(uint32_t wait_timeout)
+{
+    struct epoll_event events[1024];
+    int nfds = 0;
+
+    if(running)
+        return;
+    running = true;
+    
+    while (running)
+    {
+        // 封装epoll_wait()，等待Socket I/O事件
+        nfds = epoll_wait(m_epfd, events, 1024, wait_timeout);
+        for (int i = 0; i < nfds; i++)
+        {
+            int ev_fd = events[i].data.fd;
+            CBaseSocket* pSocket = FindBaseSocket(ev_fd);
+            if (!pSocket)
+                continue;
+            
+            #ifdef EPOLLRDHUP
+            if (events[i].events & EPOLLRDHUP)
+            {
+                //log("On Peer Close, socket=%d, ev_fd);
+                pSocket->OnClose();
+            }
+            #endif
+            // Commit End
+
+            if (events[i].events & EPOLLIN)
+            {
+                //log("OnRead, socket=%d\n", ev_fd);
+                pSocket->OnRead();
+            }
+
+            if (events[i].events & EPOLLOUT)
+            {
+			    //log("OnWrite, socket=%d\n", ev_fd);
+                pSocket->OnWrite();
+            }
+
+            if (events[i].events & (EPOLLPRI | EPOLLERR | EPOLLHUP))
+            {
+                //log("OnClose, socket=%d\n", ev_fd);
+                pSocket->OnClose();
+            }
+
+            pSocket->ReleaseRef();
+        }
+
+        // 处理定时器任务
+        _CheckTimer();
+        _CheckLoop();
+    }
+}
+```
+
+看完代码，你可能会有疑惑，为什么要设计这么模块？这就涉及到接下来说的Reactor模型了，**主要的目的是：为了支持多Reactor**。
+
+###### 单Reactor单线程模型
+
+###### 单Reactor多线程模型
+
+###### 多Reactor多线程模型
+
+参考：
+- [《Scalable IO in Java》译文](https://www.cnblogs.com/dafanjoy/p/11217708.html)
+- [Java-彻底弄懂netty-程序员必须了解的Reactor模式-知识铺](https://baijiahao.baidu.com/s?id=1642204240129683339&wfr=spider&for=pc)
+- [深入理解Reactor 网络编程模型](https://zhuanlan.zhihu.com/p/93612337)
+- [【NIO系列】——之Reactor模型](https://my.oschina.net/u/1859679/blog/1844109)
+- [Proactor 与 Reactor](https://segmentfault.com/a/1190000018331509)
+
+##### Preactor(windows)
 
 ### 延伸阅读
 #### 关于共享内存
