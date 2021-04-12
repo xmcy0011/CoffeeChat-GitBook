@@ -64,9 +64,15 @@
 ## 3.29 - 4.2
 
 - [x] [第9节 Linux Socket API介绍](chapter2/9-linux-socket-api-intro.md) 100%
+
+
+
+## 4.12 - 4.16
+
 - [ ] [第3节 如何管理大量TCP连接](chapter2/3-tcp-manager.md) 60%
 - [ ] [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md)
 - [ ] [第9节 coredump调试技术](chapter4/9-coredump.md)
 - [ ] [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
-- [ ] [第3节 如何管理大量TCP连接](chapter2/3-tcp-manager.md) 30%
 * [ ] [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)
+
+- [x] 从如何管理大量TCP连接中抽取"高性能I/O"形成单独一节 100%
