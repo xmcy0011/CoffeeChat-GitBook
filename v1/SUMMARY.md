@@ -39,7 +39,7 @@
     * [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
     * [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)
     * [第17节 用好man命令](chapter4/17-linux-api-man-pages.md)
-* [第四章 部署](chapter5/README.md)
+* [第四章 部署 ](chapter5/README.md)
     * [第1节 部署shell脚本](chapter5/1-setup-shell.md)
     * [第2节 CI/CD持续交付](chapter5/2-cicd-devops.md)
     * [第3节 Jenkins](chapter5/3-jenkins.md)
