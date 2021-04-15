@@ -426,3 +426,63 @@ SO_LINGER：用来设置延迟关闭的时间，等待套接字发送缓冲区�
 可以参考：http://blog.sina.com.cn/s/blog_6ac245850100yz2b.html
 
 其实本质上没有区别，PF_INET更多应用在socket的创建上，**::socket(PF_INET,SOCK_STREAM,0)** 。而AF_INET在地址的赋值上， **pAddr->sin_family = AF_INET;**，可能由于这2个宏的值都是2，才容易搞混淆吧。
+
+### 特殊IP地址
+
+在IP地址中，下面几类IP我们可能会经常搞混，如下：
+
+- 127.0.0.1
+- localhost
+- 0.0.0.0
+- 本机IP
+
+那么他们有什么区别和应用场景呢？
+
+#### 127.0.0.1
+
+首先**它是一个IP地址**，只是比较特殊，学名叫**回环地址（Loopback Address）**或者通俗点叫本机地址，它的使用场景一般有2个：
+
+- **测试网卡是否正常安装**。比如“ping 127.0.0.1”命令在本机上做回路测试，用来验证本机的TCP/IP协议簇是否被正确安装。
+
+- **用来实现本机进程间通信**。**任何发送到该地址的数据，都不会经过物理网卡的传输**。比如我们写Socket程序的时候，为了测试TCP服务端，都会在本机运行一个TCP客户端来进行连接，如果使用127.0.0.1，我们可以**拔掉网线，禁用网卡，这2个程序之间任然可以通信**。
+
+另外一点，127.x.x.x是一个IPV4地址，在IPV6下，本机回环地址是[::1]，所以这也是一个和localhost的区别点。
+
+#### localhost
+
+和127.0.0.1不同的是，这**是一个主机名**，从开发角度看，Socket是没有办法直接绑定localhost的，需要先通过gethostbyname()转换成IP地址。
+
+```c
+#include <netdb.h>
+extern int h_errno;
+
+struct hostent *gethostbyname(const char *name);
+```
+
+同时IETF标准（ RFC 6761）中规定这也是一个**保留域名**：
+
+```bash
+xmcy0011@ubuntu:bin$ cat /etc/hosts
+127.0.0.1       localhost
+::1             ubuntu
+```
+
+在hosts文件中，localhost指向127.0.0.1和IPV6的::1，我们在网页中访问 http://localhost 也会被**本地DNS**解析到127.0.0.1地址。
+
+#### 0.0.0.0
+
+表示任意地址，或“不确定地址”、“所有地址”。有的机器有不止一块网卡（对应多个IP地址），如果我们希望都能接收到这些网卡的数据，那么此时可以绑定该地址，通常代码中使用0.0.0.0或者INADDR_ANY来指定。
+
+```c++
+struct sockaddr_in addr{};
+addr.sin_family = AF_INET;
+addr.sin_port = htons(8088);
+addr.sin_addr.s_addr = INADDR_ANY; // 0.0.0.0
+```
+
+另外，在[《分布式配置》](./chapter4/16-distributed-config-in-nacos.md)一节中，一个配置文件针对2台机器，如果有一项设置，可以指定监听IP，他们的IP又不一样怎么办？此时就可以使用INADDR_ANY任意地址。
+
+参考：
+
+- [维基百科-localhost](https://zh.wikipedia.org/wiki/Localhost)
+- [维基百科-默认路由](https://zh.wikipedia.org/wiki/%E9%BB%98%E8%AE%A4%E8%B7%AF%E7%94%B1)
