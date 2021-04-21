@@ -96,9 +96,15 @@
 
 ### 数据模型
 
-#### User/Connection模型
+因为**用户可能在不同的设备上同时登录**，故我们需要抽象出一个User实体，接下来我们看一下他们的关系和主要的接口。
 
-#### Domain/User/Connection模型
+#### User-Connection模型
+
+
+
+#### Domain-User-Connection模型
+
+
 
 ### C++实现
 ### Go实现

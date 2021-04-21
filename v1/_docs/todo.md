@@ -70,10 +70,13 @@
 ## 4.12 - 4.16
 
 - [ ] [第3节 如何管理大量TCP连接](chapter2/3-tcp-manager.md) 60%
+- [x] 从如何管理大量TCP连接中抽取"高性能I/O"形成单独一节 100%
+
+## 4.21 - 
+
+- [ ] [第3节 如何管理大量TCP连接](chapter2/3-tcp-manager.md) 80%
 - [ ] [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md)
 - [ ] [第9节 coredump调试技术](chapter4/9-coredump.md)
 - [ ] [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
 * [ ] [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)
-
-- [x] 从如何管理大量TCP连接中抽取"高性能I/O"形成单独一节 100%
-
+- [x] [第18节 DuiLib实现聊天界面 ](chapter4/18-ui-duilib-implement.md) 4.21 100%
