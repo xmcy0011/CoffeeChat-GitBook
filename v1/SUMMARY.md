@@ -40,6 +40,7 @@
     * [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)
     * [第17节 用好man命令](chapter4/17-linux-api-man-pages.md)
     * [第18节 DuiLib实现聊天界面](chapter4/18-ui-duilib-implement.md)
+    * [第19节 终结Win32难点：RichEdit中显示GIF和图片](chapter4/19-ui-duilib-richedit-image-ole.md)
 * [第四章 部署 ](chapter5/README.md)
     * [第1节 部署shell脚本](chapter5/1-setup-shell.md)
     * [第2节 CI/CD持续交付](chapter5/2-cicd-devops.md)

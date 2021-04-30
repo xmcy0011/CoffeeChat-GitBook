@@ -181,7 +181,7 @@ lb_session_->Add(item);
 		<HBox padding="5,0,10,0" childmargin="5" mouse="false">
             <!-- 会话名称 -->
             <Label name="item_msg" singleline="false" endellipsis="true" width="stretch" margin="9,1,0,0" font="system_12" mouse="false" height="32" />
-		</HBox
+        </HBox>
 	</ListContainerElement>
 </Window>
 ```
@@ -201,7 +201,7 @@ lb_session_->Add(item);
 1. 通过内嵌浏览器（libcef），html+css来实现界面，通过C++控制逻辑，JS回调C++来实现交互。
 2. 通过原生界面实现，比如NimDuiLib。
 
-第一种方式会相对占用内存一些，但是布局和调试很方便（TeamTalk中就是这样做的），在古老的Win32或者MFC时代，这样做可能会比较好。第二种方式是因为DirectUI（比如DuiLib）的出现，界面拥有更高的灵活度，故可能是现在比较常用的方式了吧，我们这里也主要是以介绍第二种方式为主。
+第一种方式会相对占用内存一些，但是布局和调试很方便（TeamTalk中就是这样做的），在古老的Win32或者MFC时代，这样做可能会比较好。第二种方式是因为DirectUI（比如DuiLib）的出现，界面拥有更高的灵活度，故可能是现在比较常用的方式了吧，**我们这里也主要是以介绍第二种方式为主**。
 
 ### 分析
 
