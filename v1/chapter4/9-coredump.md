@@ -15,8 +15,9 @@
 PS：本文的方法适用于CentOS6.6 - CentOS 7.2
 
 >  如果按照下列步骤操作无效，请先手动编辑/etc/security/limits.conf（需手动删除文件内部分内容，见coredump.sh）、/etc/sysctl.conf（可直接删除）
+>
 
-1. 创建coredump.sh，并写入如下内容
+### 创建coredump.sh
 
 ```bash
 $ vim coredump.sh
@@ -49,7 +50,9 @@ echo -e "\nkernel.core_uses_pid = 1" >> /etc/sysctl.conf
 sysctl -p /etc/sysctl.conf
 ```
 
-2. 永久启用core dump功能
+
+
+### 永久启用core dump功能
 
 ```bash
 $ chmod 777 coredump.sh
@@ -75,7 +78,9 @@ virtual memory          (kbytes, -v) unlimited
 file locks                      (-x) unlimited
 ```
 
-3. 验证
+
+
+### 验证
 
 ```bash
 $ vim test.c  // 输入如下内容
@@ -88,7 +93,11 @@ $ ./test              # 执行test，然后任意输入一串字符后按回车�
 $ ls /data/imcorefile # 在此目录下如果生成了相应的core文件core-test-*，代表成功
 ```
 
-4. 关闭（core文件比较大，有些时候希望关闭这个功能，节省存储空间）
+
+
+ ### 关闭
+
+  > core文件比较大，有些时候希望关闭这个功能，节省存储空间
 
 ```bash
 $ ulimit -c 				# 查看core dump状态，0代表关闭，unlimited代表打开
@@ -103,15 +112,33 @@ $ ulimit -c  # 如果输出0，代表关闭成功，如果要重新启用，把�
 
 ## 实战踩坑记录
 
-### GDB看不到具体源代码
+### GDB看不到具体源代码或者显示问号
 
-可能是少了-g指令，在CMakeLists.txt增加一下：
+1. 可能是少了-g指令，在CMakeLists.txt增加一下：
 
 ```cmake
 # -g：添加gdb调试选项。
 ADD_DEFINITIONS(-g -W -Wall -D_REENTRANT -D_FILE_OFFSET_BITS=64 -DAC_HAS_INFO
         -DAC_HAS_WARNING -DAC_HAS_ERROR -DAC_HAS_CRITICAL -DTIXML_USE_STL
         -DAC_HAS_DEBUG -DLINUX_DAEMON -std=c++11)
+```
+
+2. 数组越界了也会导致这种问题
+
+```bash
+$ vim test.c
+#include <stdio.h>
+int main( int argc, char * argv[] ) { char a[1]; scanf( "%s", a ); return 0; }
+
+$ gcc -g test.c -o test
+$ ./test 
+Segmentation fault (core dumped)
+
+$ gdb test imcorefile/core-test-11-0-0-4240-1621495946
+#0  0x0000000000400066 in ?? ()
+#1  0x00007ffef9a48198 in ?? ()
+#2  0x0000000100000000 in ?? ()
+#3  0x0000000000000000 in ?? ()
 ```
 
 
