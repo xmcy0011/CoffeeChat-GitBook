@@ -1,12 +1,21 @@
 # Gitbook To Do
 
-## 4.21 - 
+## 5.20 - 
+
+- [ ] [第14节 GDB调试指南：如何调试生产环境的程序？](../chapter4/14-dubug-with-gdb.md) 10%
+- [ ] [杂项 - 负载均衡服务缺少健康检查导致的线上事故]
+- [ ] [OpenSSL API编程]
 
 - [ ] [第3节 如何管理大量TCP连接](chapter2/3-tcp-manager.md) 80%
-- [ ] [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md)
-- [ ] [第9节 coredump调试技术](chapter4/9-coredump.md)
+- [x] [第9节 故障排查：CoreDump配置](chapter4/9-coredump.md) 100%
 - [ ] [第15节 EventLoopThread设计](chapter4/15-event-loop-thread.md)
-* [ ] [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)
+- [ ] [第16节 分布式配置nacos](chapter4/16-distributed-config-in-nacos.md)
+
+
+## 4.21 - 5.19
+
+- [ ] [第3节 如何管理大量TCP连接](chapter2/3-tcp-manager.md) 80%
+- [ ] [第14节 GDB调试指南](chapter4/14-dubug-with-gdb.md) 10%
 - [x] [第18节 DuiLib实现聊天界面 ](chapter4/18-ui-duilib-implement.md) 4.21 100%
 
 ## 4.12 - 4.16
