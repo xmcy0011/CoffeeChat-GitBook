@@ -239,3 +239,194 @@ void CMainDlg::EmotionTileViewItemClick(const std::string& strID)
 }
 ```
 
+## 插入图片函数调用逻辑
+
+![soui-im-demo-insert-ole-content-function-stack.jpg](../images/chapter4/soui-im-demo-insert-ole-content-function-stack.jpg)
+
+我们可以看到，图片的插入逻辑主要在 **RichEditOleBase.h** 和 **RichEditOleCtrl.h** 中，但是如何移植到NIMDuiLib中呢？这是个问题。
+
+# 网易云IM Demo
+
+网易云IM SDK Demo中，也实现了RichEdit的图文混排，只不过有2个限制：
+
+- 不支持GIF
+- RichEdit图片插入的核心部分通过提供image_ole.dll提供，没有源码
+
+![screenhost-netease-im-demo-richedit](../images/chapter4/screenhost-netease-im-demo-richedit.png)
+
+通过研究，其RichEdit的图片插入代码在 **richedit_util.h** 中，主要函数如下：
+
+```c++
+/**
+* 向RichEdit插入一个表情
+* @param[in] text_service RichEdit控件内部ITextServices*指针
+* @param[in] callback 插入错误的回调通知函数
+* @param[in] file 图片文件路径
+* @param[in] face_tag 图片对应的标签
+* @return bool true 成功，false 失败
+*/
+bool Re_InsertFace(ITextServices *text_service, const std::wstring& file, const std::wstring& face_tag);
+
+/**
+* 向RichEdit插入一个石头剪刀布表情
+* @param[in] text_service RichEdit控件内部ITextServices*指针
+* @param[in] callback 插入错误的回调通知函数
+* @param[in] file 图片文件路径
+* @param[in] face_tag 图片对应的标签
+* @return bool true 成功，false 失败
+*/
+bool Re_InsertJsb(ITextServices *text_service, const std::wstring& file, const std::wstring& face_tag);
+
+/**
+* 向RichEdit插入一个图片
+* @param[in] text_service RichEdit控件内部ITextServices*指针
+* @param[in] callback 插入错误的回调通知函数
+* @param[in] file 图片文件路径
+* @param[in] file_tag 图片对应的标签
+* @param[in] loading 是否插入正在加载中的图片
+* @param[in] cp 图片在RichEdit中插入的位置
+* @return bool true 成功，false 失败
+*/
+bool Re_InsertImage(ITextServices *text_service, InsertCustomItemErrorCallback callback, bool total_count_limit, const std::wstring& file, const std::wstring& file_tag = L"", bool loading = false, LONG cp = REO_CP_SELECTION);
+
+/**
+* 向RichEdit插入一个文件图片
+* @param[in] text_service RichEdit控件内部ITextServices*指针
+* @param[in] callback 插入错误的回调通知函数
+* @param[in] file 图片文件路径
+* @return bool true 成功，false 失败
+*/
+bool Re_InsertFile(ITextServices *text_service, InsertCustomItemErrorCallback callback, const std::wstring& file);
+
+/**
+* 获取RichEdit中的文字，会自动把控件中的ole对象转换为对应的文字标签
+* @param[in] text_service RichEdit控件内部ITextServices*指针
+* @param[out] text 获取到的文字
+* @return void 无返回值
+*/
+void Re_GetText(ITextServices * text_service, std::wstring& text);
+
+/**
+* 获取RichEdit中包括ole和文本在内的所有内容的详细信息
+* @param[in] text_service RichEdit控件内部ITextServices*指针
+* @param[out] content_list 获取到的内容
+* @return void 无返回值
+*/
+void Re_GetTextEx(ITextServices * text_service, std::vector<RE_OLE_ITEM_CONTENT>& content_list);
+```
+
+上述 Re_InsertFace() , Re_InsertJsb() , Re_InsertImage() 等内部都会调用 Re_InsertCustomItem() ：
+
+```c++
+bool Re_InsertCustomItem(ITextServices *text_service, InsertCustomItemErrorCallback callback, bool total_count_limit, const std::wstring& file, const std::wstring& face_tag, int ole_type
+					, int face_id, bool scale, int scale_width, int scale_height, LONG cp)
+{
+	if (total_count_limit && ole_type >= RE_OLE_TYPE_CUSTOM && Re_GetCustomImageOleCount(text_service) >= MAX_CUSTOM_ITEM_NUM)
+	{
+		if( callback )
+		{
+			Post2UI(callback);
+		}
+		return false;
+	}
+	if (text_service == NULL)
+		return false;
+
+	//m_RichEdit为您的RichEdit对象
+	IRichEditOle* lpRichEditOle = Re_GetOleInterface(text_service);
+
+	if (lpRichEditOle == NULL)
+		return false;
+
+	//OLE对象
+	IOleObject*  lpOleObject = NULL;
+	IOleClientSite* lpOleClientSite = NULL; 
+	CComPtr<IImageOle> image_ole;
+	CLSID   clsid;
+	REOBJECT  reobject;
+	HRESULT   hr = S_FALSE;
+	do 
+	{
+		{
+			if (!CreateImageObject((LPVOID*)&image_ole))
+				break;
+		}
+
+		//获得数据对象接口
+		hr = image_ole->QueryInterface(IID_IOleObject, (void**)&lpOleObject);
+		if (hr != S_OK)
+			break;
+
+		hr = lpOleObject->GetUserClassID(&clsid);
+		if (hr != S_OK)
+			break;
+
+		hr = lpRichEditOle->GetClientSite(&lpOleClientSite);
+		if (hr != S_OK)
+			break;
+
+		//初始化一个对象
+		ZeroMemory(&reobject, sizeof(REOBJECT));
+		reobject.cbStruct = sizeof(REOBJECT);
+		reobject.clsid = clsid;
+		reobject.cp = cp;
+		reobject.dvaspect = DVASPECT_CONTENT;
+		reobject.dwFlags = REO_BELOWBASELINE;
+		reobject.poleobj = lpOleObject;
+		reobject.polesite = lpOleClientSite;
+		reobject.pstg = NULL;// lpStorage;
+
+		lpOleObject->SetClientSite(lpOleClientSite);
+		std::wstring image_path = file;
+		image_ole->SetFaceTag((BSTR)(face_tag.c_str()));
+		image_ole->SetFaceIndex(ole_type);
+		image_ole->SetFaceId(face_id);
+		if (ole_type == RE_OLE_TYPE_FILE)
+		{
+			OSVERSIONINFO os = { sizeof(OSVERSIONINFO) };
+			::GetVersionEx(&os);
+			std::wstring fontName = os.dwMajorVersion >= 6 ?
+				ui::MutiLanSupport::GetInstance()->GetStringViaID(L"STRING_GLOBALMANAGER_FONT_MSYH")
+				:
+				ui::MutiLanSupport::GetInstance()->GetStringViaID(L"STRING_GLOBALMANAGER_FONT_DEFXP");
+			image_ole->SetFont((BSTR)(fontName.c_str()), 20, RGB(0x1a, 0x30, 0x47));
+			if (image_path.size() == 0)
+			{
+				image_path = GetIconByFile(face_tag);
+			}
+			image_ole->SetBgColor(RGB(255, 255, 255));
+		}
+		else if (ole_type == RE_OLE_TYPE_IMAGELOADING)
+		{
+			if (image_path.size() == 0)
+			{
+				image_path = QPath::GetAppPath();
+				image_path.append(L"res\\icons\\loading.gif");
+			}
+		}
+		image_ole->SetScaleSize(scale, scale_width, scale_height);
+		image_ole->LoadFromFile((BSTR)(image_path.c_str()));
+		std::wstring guid = nbase::UTF8ToUTF16(QString::GetGUID());
+		image_ole->SetGUID((BSTR)guid.c_str());
+		OleSetContainedObject(lpOleObject, TRUE);
+
+		hr = lpRichEditOle->InsertObject(&reobject);
+	} while (0);
+
+	if( lpOleObject  != NULL )
+		lpOleObject->Release();
+	if( lpOleClientSite != NULL )
+		lpOleClientSite->Release();
+
+	lpRichEditOle->Release();
+
+	return hr == S_OK;
+}
+```
+
+我们看到有2个关键接口：IRichEditOle 和 REOBJECT，因此，我们先来研究一下这2个接口的作用，以方便后续移植SOUI_IMDemo中的代码到网易开源的NIMDuiLib中。
+
+> PS：NIMDuiLib中Duilib的源码没有开放，RichEditOle部分更没有开放，所以为什么需要我们自己扩展NimDuiLib了。就算开放了，其不支持GIF，也需要自己增加。
+
+# MFC中RichEdit如何插入图片
+
