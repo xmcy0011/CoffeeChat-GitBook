@@ -31,7 +31,7 @@
     * [第7节 业务监控](chapter4/7-promethus-and-granfana.md)
     * [第8节 Haproxy和KeepAlive](chapter4/8-haproxy-and-keepalive.md)
     * [第9节 故障排查：CoreDump配置](chapter4/9-coredump.md)
-    * [第10节 IDE:goland和clion](chapter4/10-goland-and-clion.md)
+    * [第10节 IDE：goland和clion](chapter4/10-goland-and-clion.md)
     * [第11节 敏感词算法和实现](chapter4/11-trie.md)
     * [第12节 设计安全的账号系统](chapter4/12-salted-password-hashing.md)
     * [第13节 会话级别的加密实现](chapter4/13-secret-chat-encryption.md)

@@ -5,6 +5,7 @@
 - [x] [第14节 GDB调试指南：如何调试生产环境的程序？](../chapter4/14-dubug-with-gdb.md) 100%
 - [ ] [杂项 - 负载均衡服务缺少健康检查导致的线上事故]
 - [ ] [OpenSSL API编程]
+- [x] [第10节 IDE：goland和clion](../chapter4/10-goland-and-clion.md)
 
 - [ ] [第3节 如何管理大量TCP连接](chapter2/3-tcp-manager.md) 80%
 - [x] [第9节 故障排查：CoreDump配置](../chapter4/9-coredump.md) 100%
