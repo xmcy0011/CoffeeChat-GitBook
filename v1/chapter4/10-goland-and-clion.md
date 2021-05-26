@@ -8,7 +8,7 @@
 
 2019年购入了MacBook Pro，刚好同年换工作，了解到GO语言跨平台和互联网时代的C语音的特性。于是自学之。中间接触并掌握了GoLand，这款IDE给我留下了很深的印象，让我学习go语言少走了很多弯路，它强大的智能提示功能，全面的调试（断点、逐步、实时变量）功能，以及主题切换和界面美观等要素，让我有一种终于遇到一款称心如意的工具一样。
 
-后续了解到  [JetBrains](https://baike.baidu.com/item/JetBrains/7502758) 这家国外公司，是一家专门做各种跨平台的IDE的公司，著名的Android Studio的引擎好像就是基于它们开源框架（IntelliJ IDEA）开发的。除此之外，还有：IDEA（Java）、PyCharm（Python）、WebStorm（前端）、和Clion（C++）等等。于是，在非Windows系统上，我都适用JetBrains全家桶IDE开发：
+后续了解到  [JetBrains](https://baike.baidu.com/item/JetBrains/7502758) 这家国外公司，是一家专门做各种跨平台的IDE的公司，著名的Android Studio的引擎好像就是基于它们开源框架（IntelliJ IDEA）开发的。除此之外，还有：IDEA（Java）、PyCharm（Python）、WebStorm（前端）、和Clion（C++）等等。于是，在非Windows系统上，我都使用JetBrains全家桶IDE开发：
 
 	- GoLand：开发go语言程序
 	- Clion：开发Linux C++程序
@@ -68,11 +68,11 @@ Ubuntu20下推荐使用搜狗输入法，先去 官网 下载，按照 官方的
 
 在Clion、Goland等IDE下，会发现输入法在屏幕左下角，解决方法如下：
 
-下载JetbrainsRunTime，CSDN、 百度网盘（密码: 8miu）
-解压下载的文件，得到JDK文件夹
-IDE安装Choose Runtime插件
-IDE里按 CTRL+SHIFT+A，输入choose runtime，选择jbr的路径，点击install，IDE自动重启，安装完毕
-最后，效果如下：
+- 下载JetbrainsRunTime，CSDN、 百度网盘（密码: 8miu）
+- 解压下载的文件，得到JDK文件夹
+- IDE安装Choose Runtime插件，Settings->Plugins->Choose Runtime->Install。
+- IDE里按 CTRL+SHIFT+A，输入choose runtime，选择jbr的路径，点击install，IDE自动重启，安装完毕
+  最后，效果如下：
 
 ![clion-sougou-input-screen-host](../images/chapter4/clion-sougou-input-screen-host.png)
 
@@ -82,8 +82,6 @@ IDE里按 CTRL+SHIFT+A，输入choose runtime，选择jbr的路径，点击insta
 
 - 项目视图：File -> Settings -> Appearance & Behavlor -> Appearance -> Use custom font -> 14
 - 文本编辑器：File -> Settings -> Editor -> Font -> Size -> 14
-
-
 
 ### 代码模板配置
 
