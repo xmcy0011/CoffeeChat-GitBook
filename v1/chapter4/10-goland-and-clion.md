@@ -36,14 +36,6 @@
 
 此时，可以使用VMWare WorkStation 或者 Virtrual Box等虚拟机来安装Ubuntu系统，具体安装方法可以参考这篇文章：[Ubuntu 20.04 LTS 桌面版详细安装指南](https://www.sysgeek.cn/install-ubuntu-20-04-lts-desktop/)
 
-### Ubuntu20中文输入法问题
-
-安装之后，第一个就是要安装中文输入法，可以参考下面的文章：
-
-- [Ubuntu20.04安装中文输入法](https://blog.csdn.net/yyj108317/article/details/106001083)
-
-目前我是使用的IBus，据说fcitx已经失效了。
-
 ### SSH启用
 
 打开ssh，这样可以使用scp传输文件。
@@ -72,11 +64,17 @@ $ scp /home/a.conf xuyc@10.0.80.90:/home/xuyc/Documents/
 
 ### 中文输入法问题
 
-中文输入问题可以跳转以下链接查看解决方法：
+Ubuntu20下推荐使用搜狗输入法，先去 官网 下载，按照 官方的教程 进行安装即可。
 
-- [Ubuntu20下Pycharm20中文无法输入问题](https://blog.csdn.net/song696969/article/details/108910588)
+在Clion、Goland等IDE下，会发现输入法在屏幕左下角，解决方法如下：
 
+下载JetbrainsRunTime，CSDN、 百度网盘（密码: 8miu）
+解压下载的文件，得到JDK文件夹
+IDE安装Choose Runtime插件
+IDE里按 CTRL+SHIFT+A，输入choose runtime，选择jbr的路径，点击install，IDE自动重启，安装完毕
+最后，效果如下：
 
+![clion-sougou-input-screen-host](../images/chapter4/clion-sougou-input-screen-host.png)
 
 ### clion字体大小不等
 
@@ -255,3 +253,10 @@ $ sudo apt install libgoogle-perftools-dev 	# tcmalloc
 左侧是仓库，右侧是工作区域，要提交改动，需要按住Ctrl+鼠标选择相关文件，然后点击“commit…”，此时输入描述后，点击Commit&Push就推送到远程仓库了。
 
 如果要忽略一个文件夹，则需要在左侧文件树选中一个文件夹，然后单击选择“ignore…”后，再选择“.gitignore in repository root directory”即可。
+
+
+## 参考
+
+- [Ubuntu20下Pycharm20中文无法输入问题（无效）](https://blog.csdn.net/song696969/article/details/108910588)
+- [Ubuntu20.04 Clion/Pycharm/IDEA 输入中文+光标跟随解决方案](https://blog.csdn.net/T_T233333333/article/details/115278843)
+
