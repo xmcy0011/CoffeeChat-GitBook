@@ -43,7 +43,81 @@ Nginx只有当有访问时，才发起对后端节点的探测。如果本次请
 
 由于Nginx自带的被动健康检查的功能比较弱，故各种商业版Nginx都有其增强的实现。目前各大互联网公司用的比较多的是基于淘宝开源实现的 [nginx_upstream_check_module](http://tengine.taobao.org/document_cn/http_upstream_check_cn.html)模块。他的原理是：Nignx定时主动地去ping后端的服务列表，当发现某服务出现异常时，就把该服务从健康列表中移除，当发现某服务恢复时，又能够将该服务加回健康列表中。
 
-相比Nginx自带的模块，它可以主动的定时去检查服务的健康状态，增加了更多精细化的控制。比如超时时间、成功几次才算服务正常（rise）、发送请求的内容等：
+相比Nginx自带的模块，它可以主动的定时去检查服务的健康状态，增加了更多精细化的控制。比如超时时间、成功几次才算服务正常（rise）、发送请求的内容等
+
+##### 第三方模块安装
+
+>  拿centos 7举例
+
+1. 安装nginx，查看版本
+
+```bash
+$ yum install nginx
+$ nginx -V
+nginx version: nginx/1.16.1
+built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC)
+built with OpenSSL 1.1.1c FIPS  28 May 2019 (running with OpenSSL 1.1.1g FIPS  21 Apr 2020)
+TLS SNI support enabled
+configure arguments: --prefix=/usr/share/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/var/lib/nginx/tmp/client_body --http-proxy-temp-path=/var/lib/nginx/tmp/proxy --http-fastcgi-temp-path=/var/lib/nginx/tmp/fastcgi --http-uwsgi-temp-path=/var/lib/nginx/tmp/uwsgi --http-scgi-temp-path=/var/lib/nginx/tmp/scgi --pid-path=/run/nginx.pid --lock-path=/run/lock/subsys/nginx --user=nginx --group=nginx --with-file-aio --with-ipv6 --with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-stream_ssl_preread_module --with-http_addition_module --with-http_xslt_module=dynamic --with-http_image_filter_module=dynamic --with-http_sub_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_random_index_module --with-http_secure_link_module --with-http_degradation_module --with-http_slice_module --with-http_stub_status_module --with-http_perl_module=dynamic --with-http_auth_request_module --with-mail=dynamic --with-mail_ssl_module --with-pcre --with-pcre-jit --with-stream=dynamic --with-stream_ssl_module --with-google_perftools_module --with-debug --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -m64 -mtune=generic' --with-ld-opt='-Wl,-z,relro -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -Wl,-E'
+```
+
+2. 下载Nginx和第三方插件
+
+```bash
+$ wget http://nginx.org/download/nginx-1.16.1.tar.gz  # 下载nginx
+$ git clone https://github.com/yaoweibin/nginx_upstream_check_module.git # 插件
+# 安装编译nginx所需依赖
+$ yum -y install gcc-c++ pcre-devel openssl openssl-devel libxml2 libxml2-dev libxslt-devel autoconf automake gd gd-devel perl-devel perl-ExtUtils-Embed libuuid-devel libblkid-devel libudev-devel fuse-devel libedit-devel libatomic_ops-devel
+```
+
+3. 为Nginx打补丁
+
+```bash
+$ tar zxf nginx-1.16.1.tar.gz
+$ cd nginx-1.16.1
+# 根据nginx的版本打对应的版本
+$ patch -p1 < ../nginx_upstream_check_module/check_1.16.1+.patch
+patching file src/http/modules/ngx_http_upstream_hash_module.c
+patching file src/http/modules/ngx_http_upstream_ip_hash_module.c
+patching file src/http/modules/ngx_http_upstream_least_conn_module.c
+patching file src/http/ngx_http_upstream_round_robin.c
+patching file src/http/ngx_http_upstream_round_robin.h
+```
+
+4. 编译Nginx（把nginx -V的编译参数拷贝过来，增加--add-module=../nginx_upstream_check_module）
+
+```bash
+$ ./configure --prefix=/usr/share/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/var/lib/nginx/tmp/client_body --http-proxy-temp-path=/var/lib/nginx/tmp/proxy --http-fastcgi-temp-path=/var/lib/nginx/tmp/fastcgi --http-uwsgi-temp-path=/var/lib/nginx/tmp/uwsgi --http-scgi-temp-path=/var/lib/nginx/tmp/scgi --pid-path=/run/nginx.pid --lock-path=/run/lock/subsys/nginx --user=nginx --group=nginx --with-file-aio --with-ipv6 --with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-stream_ssl_preread_module --with-http_addition_module --with-http_xslt_module=dynamic --with-http_image_filter_module=dynamic --with-http_sub_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_random_index_module --with-http_secure_link_module --with-http_degradation_module --with-http_slice_module --with-http_stub_status_module --with-http_perl_module=dynamic --with-http_auth_request_module --with-mail=dynamic --with-mail_ssl_module --with-pcre --with-pcre-jit --with-stream=dynamic --with-stream_ssl_module --with-google_perftools_module --with-debug --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -m64 -mtune=generic' --with-ld-opt='-Wl,-z,relro -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -Wl,-E' --add-module=../nginx_upstream_check_module
+
+# 省略上面的一堆输出... 
+Configuration summary
+  + using system PCRE library
+  + using system OpenSSL library
+  + using system zlib library
+
+  nginx path prefix: "/usr/share/nginx"
+  nginx binary file: "/usr/sbin/nginx"
+  nginx modules path: "/usr/lib64/nginx/modules"
+  nginx configuration prefix: "/etc/nginx"
+  nginx configuration file: "/etc/nginx/nginx.conf"
+  nginx pid file: "/run/nginx.pid"
+  nginx error log file: "/var/log/nginx/error.log"
+  nginx http access log file: "/var/log/nginx/access.log"
+  nginx http client request body temporary files: "/var/lib/nginx/tmp/client_body"
+  nginx http proxy temporary files: "/var/lib/nginx/tmp/proxy"
+  nginx http fastcgi temporary files: "/var/lib/nginx/tmp/fastcgi"
+  nginx http uwsgi temporary files: "/var/lib/nginx/tmp/uwsgi"
+  nginx http scgi temporary files: "/var/lib/nginx/tmp/scgi"
+
+./configure: warning: the "--with-ipv6" option is deprecated
+
+$ make # 编译
+$ make install # 覆盖，和之前yum install nginx的位置一样，可以通过rpm -ql nginx查看包安装位置
+```
+
+安装完成之后，就可以使用健康检查功能了。
+
+##### 配置示例
 
 ```conf
 http {
@@ -94,6 +168,32 @@ http {
         }
     }
 }
+```
+
+上面是一个配置示例，
+
+##### 查看log
+
+启动nginx后，我们可以在/var/log/nginx下查看是否生效：
+
+```bash
+$ tail -f /var/log/nginx/error.log
+2021/06/02 15:52:03 [error] 25241#0: check time out with peer: 10.32.105.18:8008
+2021/06/02 15:52:04 [error] 25242#0: send() failed (111: Connection refused)
+2021/06/02 15:52:07 [error] 25242#0: send() failed (111: Connection refused)
+2021/06/02 15:52:07 [error] 25241#0: check time out with peer: 10.32.105.18:8008
+2021/06/02 15:52:10 [error] 25242#0: send() failed (111: Connection refused)
+2021/06/02 15:52:12 [error] 25241#0: check time out with peer: 10.32.105.18:8008
+2021/06/02 15:52:13 [error] 25242#0: send() failed (111: Connection refused)
+2021/06/02 15:52:16 [error] 25242#0: send() failed (111: Connection refused)
+2021/06/02 15:52:16 [error] 25241#0: check time out with peer: 10.32.105.18:8008
+2021/06/02 15:52:19 [error] 25242#0: send() failed (111: Connection refused)
+2021/06/02 15:52:21 [error] 25241#0: check time out with peer: 10.32.105.18:8008
+
+2021/06/02 15:52:22 [error] 25242#0: send() failed (111: Connection refused)
+2021/06/02 15:52:25 [error] 25242#0: send() failed (111: Connection refused)
+2021/06/02 15:52:25 [error] 25241#0: check time out with peer: 10.32.105.18:8008
+2021/06/02 15:52:28 [error] 25242#0: send() failed (111: Connection refused)
 ```
 
 
@@ -260,9 +360,121 @@ for (it = CLoginConn::msg_server_maps_.begin(); it != CLoginConn::msg_server_map
 }
 ```
 
+## 服务重试和容错机制
 
+### 概述
+
+这里拿teamtalk的架构举例：
+
+![teamtalk-architecture](../images/chapter4/teamtalk-architecture.jpeg)
+
+LoginServer实现了负载均衡的功能，他主要负责监控MsgServer上用户的数量，然后返回一个用户数少的MsgServer地址给客户端（即最小连接）。
+
+```json
+http://localhost:8080?method_id=im.connect&user_id=10091009&app_id=2&domain_id=1000
+
+{
+    "backup_ip": "10.0.38.117",
+    "expire_date": 1622822400,
+    "msfs_url": "",
+    "port": 8000,
+    "prior_ip": "10.0.38.117",
+    "result_code": 0,
+    "user_token": "MzIwNTY4YjdhZGU1N2U2YzcwYzRkZTczYWFiZTdiOTQ="
+}
+```
+
+
+
+但是，聪明的你肯定发现了这里存在单点故障，所以我们至少需要2个LoginServer来做备份，如果其中一个节点损坏，那么另外一个节点还可以继续服务。
+
+为了解决LoginServer单点的问题，我们对架构做出如下演化，增加一台Nginx做反向代理：
+
+![teamtalk-ops-example](../images/chapter4/teamtalk-ops-example.png)
+
+Nginx的参考配置：
+
+```bash
+upstream login_server{
+	server 10.0.38.117:8080 max_fails=1 fail_timeout=30s;
+	server 10.0.50.113:8080 max_fails=1 fail_timeout=30s backup;
+}
+
+server {
+	listen 8080;
+	location /{
+		proxy_pass http://login_server;
+	}
+}
+```
+
+如果其中一台服务器异常了，那么我们所有的请求都往备份服务器打，这样就能继续服务。
+
+### 简述服务依赖
+
+LoginServer和MsgServer之间是TCP长连接，如果这中间因为网络异常，导致其中一台LoginServer和其他MsgServer的连接暂时断开，**然后30秒后又恢复正常**。那么此时，对于Nginx而言，LoginServer还是正常的，所以请求得到响应之后就直接返回给客户端了。
+
+![teamtalk-timeout-screenhost](../images/chapter4/teamtalk-timeout-screenhost.png)
+
+我们前面介绍的健康检查功能，也可以增加对下游依赖服务的连接情况做出检查，但是这中间是有间隔的，可能这个超时就出现了30秒，但是你的健康检查发现的最小时间也是30秒，那这个空白的30秒问题如何解决？
+
+### Nginx容错解决方案
+
+我们发现，2台服务器中同一时间只会有一台出现网络异常，那此时，我们能把请求通过Nginx打到另外一个节点上重试吗？
+
+从事运维的同学可能很快就给出了答案：使用Nginx的proxy_next_upstream配置（重试功能）。
+
+```bash
+upstream login_server{
+	server 10.32.105.18:8080 max_fails=1 fail_timeout=30s;
+	server 10.32.80.75:8080 max_fails=1 fail_timeout=30s backup;
+}
+
+server {
+	listen 8080;
+	location /{
+		proxy_pass http://login_server;
+		# 重试机制，遇到这些错误，继续把请求发到下一个节点
+		proxy_next_upstream non_idempotent error timeout http_500 http_502 http_503 http_504;
+		proxy_next_upstream_tries 2;
+	}
+}
+```
+
+如上图，2台服务器，如果10.32.105.18出现问题，返回proxy_next_upstream出现的错误情况：connect失败、超时或者出现500-504等错误码：
+
+```c++
+"HTTP/1.1 500 Internal Server Error\r\n"\
+"Connection:close\r\n"\
+```
+
+则把请求继续发到下一个节点（有多少台依次往下不断重试，直到最后一台返回错误），这样我们就能对外无感知的提供服务。
+
+![teamtalk-nginx-proxy-next-upstream](../images/chapter4/teamtalk-nginx-proxy-next-upstream.png)
+
+这些常见的错误解释如下：
+
+- proxy_next_upstream
+  - error：与服务器建立连接，向其传递请求或读取响应头时发生错误
+  - timeout ：在与服务器建立连接，向其传递请求或读取响应头时发生超时
+  - invalid_header：服务器返回空的或无效的响应
+  - http_500：服务器返回代码为500的响应
+  - http_502：服务器返回代码为502的响应
+  - http_503：服务器返回代码为503的响应
+  - http_504：服务器返回代码504的响应
+  - http_403：服务器返回代码为403的响应
+  - http_404：服务器返回代码为404的响应
+  - http_429：服务器返回代码为429的响应（1.11.13）
+  - non_idempotent：通常，请求与 非幂等 方法（POST，LOCK，PATCH）不传递到请求是否已被发送到上游服务器（1.9.13）的下一个服务器; 启用此选项显式允许重试此类请求
+  - off：禁用将请求传递给下一个服务器
+
+- proxy_next_upstream_tries
+  - 0：表示不限制
+  - 其他：限制次数
 
 ## 参考
 
 - [Nginx被动健康检查和主动健康检查](https://www.cnblogs.com/linyouyi/p/11502282.html)
 - [Nginx实战系列之功能篇----后端节点健康检查](https://blog.51cto.com/nolinux/1594029)
+- [nginx安装第三方模块nginx_upstream_check_module](https://blog.csdn.net/pcn01/article/details/105182600)
+- [nginx重试机制proxy_next_upstream](https://www.cnblogs.com/cyleon/p/11023229.html)
