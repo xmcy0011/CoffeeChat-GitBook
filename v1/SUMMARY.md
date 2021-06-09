@@ -61,3 +61,4 @@
     * [goim](chapter7/teamtalk.md)
     * [wildfirechat](chapter7/teamtalk.md)
     * [Telegram](chapter7/teamtalk.md)
+    * [OpenIM](chapter7/2-open-im.md)

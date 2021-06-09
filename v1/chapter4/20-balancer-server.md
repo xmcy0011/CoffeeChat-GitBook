@@ -478,3 +478,4 @@ server {
 - [Nginx实战系列之功能篇----后端节点健康检查](https://blog.51cto.com/nolinux/1594029)
 - [nginx安装第三方模块nginx_upstream_check_module](https://blog.csdn.net/pcn01/article/details/105182600)
 - [nginx重试机制proxy_next_upstream](https://www.cnblogs.com/cyleon/p/11023229.html)
+- [proxy_next_upstream 对POST无效](https://yatesun.com/2020/02/proxy-next-upstream/)
