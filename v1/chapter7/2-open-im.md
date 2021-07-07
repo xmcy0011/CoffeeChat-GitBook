@@ -153,7 +153,9 @@ $ vim server1.properties
 # 改以下配置，其他默认即可
 broker.id=0
 log.dirs =/data/open-im/kafka/log1
-listeners=PLAINTEXT://10.0.56.153:9092
+listeners=PLAINTEXT://:9092
+# advertised.listeners作用参考：https://www.cnblogs.com/gyyyl/p/13446673.html
+advertised.listeners=PLAINTEXT://10.0.56.153:9092
 zookeeper.connect=127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
 ```
 
@@ -162,7 +164,8 @@ zookeeper.connect=127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
 ```bash
 broker.id=1
 log.dirs =/data/open-im/kafka/log2
-listeners=PLAINTEXT://10.0.56.153:9093
+listeners=PLAINTEXT://:9093
+advertised.listeners=PLAINTEXT://10.0.56.153:9093
 zookeeper.connect=127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
 ```
 
@@ -171,7 +174,8 @@ zookeeper.connect=127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
 ```bash
 broker.id=2
 log.dirs =/data/open-im/kafka/log3
-listeners=PLAINTEXT://10.0.56.153:9094
+listeners=PLAINTEXT://:9094
+advertised.listeners=PLAINTEXT://10.0.56.153:9094
 zookeeper.connect=127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
 ```
 
@@ -199,6 +203,23 @@ nohup bin/kafka-server-start.sh config/server3.properties > kafka3.out 2>&1 &
 ps aux|grep kafka
 ```
 
+5. 验证kafka集群
+
+```bash
+# 创建一个测试topic
+$ bin/kafka-topics.sh --create --zookeeper 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183 --replication-factor 2 --partitions 3 --topic demo_topics
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic demo_topics.
+
+# 列出所有topic
+$ bin/kafka-topics.sh --list --zookeeper 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
+
+# 查看topic详情
+$ bin/kafka-topics.sh --describe --zookeeper 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183 demo_topics
+```
+
+
+
 
 
 参考：
@@ -211,6 +232,7 @@ ps aux|grep kafka
 $ yum install redis
 $ vim /etc/redis.conf
 bind 127.0.0.1 -> bind 0.0.0.0
+
 $ systemctl restart redis
 ```
 
@@ -220,4 +242,24 @@ $ systemctl restart redis
 $ yum install mariadb.x86_64
 $ systemctl restart mariadb
 ```
+
+
+
+mistake upon solve arrange two vital ladder fortune laugh desert bid interest
+
+21f00170929dc9d2
+
+test1
+
+
+
+f6cc31ec79c3b6cb
+
+test2
+
+
+
+# 参考
+
+- [kafka集群部署与验证](https://blog.51cto.com/u_13231454/2457088)
 

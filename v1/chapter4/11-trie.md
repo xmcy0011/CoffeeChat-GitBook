@@ -28,13 +28,13 @@
 
 ## Trie树
 
-Trie树，即字典树或前缀树，是一种树形结构。广泛应用于`统计和排序大量的字符串`（但不仅限于字符串），所以`经常被搜索引擎系统用于文本词频统计`。它的优点是`最大限度地减少无谓的字符串比较，查询效率比较高`。
+Trie树，即`字典树`或`前缀树`，是一种树形结构。广泛应用于`统计和排序大量的字符串`（但不仅限于字符串），所以`经常被搜索引擎系统用于文本词频统计`。它的优点是`最大限度地减少无谓的字符串比较，查询效率比较高`。
 
 Trie的核心思想是`空间换时间，利用字符串的公共前缀来降低查询时间的开销以达到提高效率的目的`。
 
 ![trie树](../images/trie_define.png)
 
-**Trie树的基本性质**：
+### Trie树的基本性质
 
 1. 根节点不包含字符，除根节点外每一个节点都只包含一个字符；
 
@@ -45,14 +45,12 @@ Trie的核心思想是`空间换时间，利用字符串的公共前缀来降低
 
 所以每个节点都应该有2个字段：
 
-1. end_flag标志：是否结束，即为叶子节点。
-2. map<key, value>：存放当前节点的值和子节点的值。
+1. `end_flag标志`：是否结束，即为叶子节点。
+2. `map<key, value>`：存放当前节点的值和子节点的值。
 
-### 题目
+### 基础入门
 
-先来看一个题目：
-
- [LeetCode 208. 实现 Trie (前缀树)](https://leetcode-cn.com/problems/implement-trie-prefix-tree/)
+先来看一个题目：[LeetCode 208. 实现 Trie (前缀树)](https://leetcode-cn.com/problems/implement-trie-prefix-tree/)
 
  实现一个 Trie (前缀树)，包含 `insert`, `search`, 和 `startsWith` 这三个操作。
 
@@ -76,19 +74,22 @@ trie.search("app");     // 返回 true
 
 ### 实现
 
-我们先来把它画成一个trie树：
+我们先来把它画成一个trie树（以题目中的apple和app2个单词为例）：
 
 ![trie_leetcode_208](../images/trie_leetcode_208.png)
 
-通过2次insert（apple和app），根据trie树的特性，构建了上面的一个trie树。
+通过`insert(”apple“)`和 `insert("app“)`2次函数调用，我们构建了如上图所示的trie树。我们发现：
 
-在这里，我们为了区分节点是否结束，使用了一个额外的`"#"`节点（如果给每个节点加一个bool结束标志，会多出1倍的内存，请根据实际场景取舍）。这样我们就能判断是startsWith还是equal，也比较好实现。
+- apple和app共用1个前缀，没有多余的节点创建，只是多了一个#结束节点。
+- 有2个#节点，只要遇到#就代表本次匹配结束，有多少个关键词就应该有多少个#节点。
 
-#### 结构定义
+当然，增加结束节点的另外一个好处：`我们可以判断是startsWith还是equal`。
+
+#### 数据结构定义
 
 因为root不包含字符，所以可以分别定义一个TrieNode代表节点，Trie代表树。
 
-TrieNode：
+**TrieNode**：
 
 ```c++
 #include <string>
@@ -115,7 +116,7 @@ private:
 
 
 
-Trie：
+**Trie**：
 
 ```c++
 // 代表一颗Trie树
@@ -219,7 +220,7 @@ $ ./main
 
 所以，我们会发现一个问题，最后一个“this is apple”明明包含“apple”，为什么还是返回false？
 
-其实很简单，上面都是默认敏感词在整个字符串开始位置，我们只需要增加一个指针，不断往后搜索即可。
+其实很简单，上面都是`默认敏感词在整个字符串开始位置`，我们`只需要增加一个指针，不断往后搜索即可`。
 
 ### 敏感词搜索
 
@@ -227,9 +228,9 @@ $ ./main
 
 思路：
 
-1. 首先 p1 指针指向 root，指针 p2 和 p3 指向字符串中的第一个字符。
+1. `首先 p1 指针指向 root`，指针 p2 和 p3 指向字符串中的第一个字符。
 2. 算法从字符 t 开始，检测有没有以 t 作为前缀的敏感词，在这里就直接判断 root 中有没有 t 这个子节点即可。这里没有，所以将 p2 和 p3 同时右移。
-3. 一直移动p2和p3，发现存在以 a 作为前缀的敏感词，那么就只右移 p3 继续判断 p2 和 p3 之间的这个字符串是否是敏感词（当然要判断是否完整）。如果在字符串中找到敏感词，那么可以用其他字符串如 *** 代替。接下来不断循环直到整个字符串遍历完成就可以了。
+3. 一直移动p2和p3，发现存在以 a 作为前缀的敏感词，那么就`只右移 p3 继续判断 p2 和 p3 之间的这个字符串是否是敏感词（当然要判断是否完整）`。如果在字符串中找到敏感词，那么可以用其他字符串如 *** 代替。接下来不断循环直到整个字符串遍历完成就可以了。
 
 
 
@@ -292,7 +293,9 @@ int Trie::getSensitiveLength(std::string word, int startIndex) {
 关于时间复杂度：
 
 - 构建敏感词的时间复杂度是可以忽略不计的，因为构建完成后我们是可以无数次使用的。
-- 如果字符串的长度为 n，而每个敏感词查找的时间复杂度是 O(m)，我们需要对字符串遍历 n 遍，所以查找敏感词的这个过程的时间复杂度为 O(m * n)，即 **2个for循环** 。
+- 如果字符串的长度为 n，则每个敏感词查找的时间复杂度为` O(n)`。
+
+
 
 ### 性能测试
 
@@ -627,7 +630,7 @@ std::string Trie::replaceSensitive(const std::string &word) {
 }
 ```
 
-方法二：使用wstring代替string。遍历wstring时，item为wchar_t类型（4个字节），直接使用wchar_t作为unordered_map的key，这样无须特殊处理中文替换为*的问题。
+`方法二（推荐）`：使用wstring代替string。遍历wstring时，item为wchar_t类型（4个字节），直接使用wchar_t作为unordered_map的key，这样无须特殊处理中文替换为*的问题。
 
 
 ### 停顿词实现
@@ -644,7 +647,7 @@ int Trie::getSensitiveLength(std::string word, int startIndex) {
         const char &cur = word[p3];
         auto subNode = p1->getSubNode(cur);
         if (subNode == nullptr) {
-        		// 查找是停顿词的情况
+        		// 遇到停顿词，跳过该词继续搜索字符串
             if (cur == '&' ||
                 cur == '-'||
                 cur == ' ') {
@@ -703,7 +706,8 @@ ASCII码` !到~`之间的字符，和Unicode码中 `0xFF01到0xFF5E字符` 一�
 const wchar_t kSBCCharStart = 0xFF01; // 全角！
 const wchar_t kSBCCharEnd = 0xFF5E; // 全角～
 // 全角空格的值，它没有遵从与ASCII的相对偏移，必须单独处理
-const wchar_t kSBCSpace = 0x508;    // 全角空格
+const wchar_t kSBCSpace = 0x3000;   // 全角空格
+const wchar_t kDBCSpace = ' '; // 半角空格
 
 // ASCII表中除空格外的可见字符与对应的全角字符的相对偏移
 const wchar_t kConvertStep = kSBCCharEnd - kDBCCharEnd;
@@ -803,7 +807,9 @@ to do.
 | :--: | :--:| :--: | :--: |
 | O(LenA + LenB) * m | log(n) | 未知 | 未知 |
 
+最后，C++实现的代码请移步：
 
+- [Github-cpp-dirtyfilter](https://github.com/xmcy0011/cpp-dirtyfilter)
 
 ## 参考
 
@@ -832,13 +838,8 @@ to do.
 
 
 
-C++中文敏感词过滤，支持特殊符号，半角全角，停顿词，重复词等等，基于trie树算法实现
-
-cpp-dirtyfilter
-
-
-
 网站：
 
 - 在线unicode字符表：https://unicode-table.com/
+- 查看字符编码：http://www.mytju.com/classcode/tools/encode_utf8.asp
 
