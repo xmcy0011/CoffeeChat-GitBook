@@ -31,6 +31,8 @@
 
 #### TCP协议
 
+[配图来源](https://www.cnblogs.com/andy9468/p/10096606.html)
+
 ![protocol2](../images/protocol-iso-2.png)
 
 
@@ -86,7 +88,7 @@ Content-Type: text/html  # 数据部内容，还有json/application格式，text
 
 比如著名的QQ、MSN等等即时通信工具，都是使用的私有协议。据说QQ是基于UDP实现的，但是你不知道他们的数据包格式是啥，包含哪些请求。
 
-
+[配图来源](https://www.cnblogs.com/andy9468/p/10096606.html)
 
 ![protocol-iso](../images/protocol-iso.png)
 
@@ -112,16 +114,132 @@ Content-Type: text/html  # 数据部内容，还有json/application格式，text
 
 ## 自定义协议实现
 
-我们先看一些自定义协议都有哪些实现方式。
+我们先看一下私有协议如何使用，以及如何定义。
 
-### 自定义结构体
+### 头部和数据部
+
+虽然我们的例子是基于UDP的，但是在实际开发中，从实现难度和效果层面衡量，我们都推荐使用TCP作为传输层协议，这里只是为了让大家方便理解。
+
+#### 粘包问题
+
+在实际的网络环境中，不管是TCP还是UDP，都可能遇到粘包问题，以TCP举例，可能的原因如下：
+
+- 从数据发送的过程中，经过那些步骤来看：应用层首先要将自己的数据通过套接字发送，首先要调用一个write方法：（将应用进程缓冲区中的数据拷贝到套接口发送缓冲区SO_SNDBUF，有一个大小的限制），如果应用进程缓冲区的一条消息的字节的大小超过了发送缓冲区的大小，就有可能产生粘包问题，因为消息已经被分割了，有可能一部分已经被发送出去了，对方已经接受了，但是另外一部分可能刚放入套接口发送缓冲区里准备进一步发送，就直接导致接受的后一部分，直接导致了粘包问题的出现。
+- TCP是基于字节流的，只维护发送出去多少，确认了多少，并没有维护消息与消息之间的边界，因而极有可能导致粘包问题。（应该在应用层维护一个消息边界，通常使用TLV方式实现，下文有介绍）
+- 链路层所发送的数据有一个最大传输单元（MTU）的限制（以太网的MTU是1500bytes），如果我们所传输的信息超过了限制，那么会在IP层进行分组，或者分片，这也可能导致消息的粘包问题的产生。
+- TCP本身的算法导致，比如流量控制，拥塞控制算法等，也可能导致粘包
+- 网络延迟，导致收到了半包
+
+>  [配图来源](https://www.zhihu.com/question/20210025/answer/1982654161)
+
+![tcp-packet-splicing](../images/tcp-packet-splicing.jpeg)
+
+通常解决方法有如下3种方式：
+
+- **固定包长的数据包**：每个协议包的长度都是固定的。举个例子，例如我们可以规定每个协议包的大小是 64 个字节，每次收满 64 个字节，就取出来解析（如果不够，就先存起来）。
+- **在包尾加结束标志**：在字节流中遇到特殊的符号时就认为到一个包的末尾了。例如，我们熟悉的 FTP协议，发邮件的 SMTP 协议，一个命令或者一段数据后面加上"\r\n"（即所谓的 **CRLF**）表示一个包的结束。对端收到后，每遇到一个”\r\n“就把之前的数据当做一个数据包。
+- **包头+包体的方式**：采用包头加包体长度的方法，一般情况下，包头是定长的，假如包头是4个字节，可以先接受包头的4个字节，包头中携带一个字段，描述包体的长度，然后继续进行接收。
+
+这3中方式中，固定包长以及加特殊符号的方式我们很少会这样使用，因为：
+
+- 第一种：浪费带宽，试想我们如何定义这个长度？让用户只能发送10个汉字还是32个汉字？
+- 第二种：选什么特殊符号好？如果用户发送的消息里面包含了\r\b，软件不是会出现BUG了？明明只发了一段话，结果你切割一下，变成了2句话。
+
+所以，`私有协议中主要使用第三种方式：包头+包体`，但是为了加深大家的理解，我们来看几个例子。
+
+#### 定长数据包
 
 我们以P2P聊天为例，现在我们需要知道对方是否真正收到了我方发送的消息，我们可以定义一个结构体：
 
 ```c++
-// 消息类型
+// 消息类型，C++11，限定作用域
 enum class MsgType {
-    kMsgData, // 代表这是消息内容
+    kMsgData=1, // 代表这是消息内容
+    kMsgAck,  // 代表这是确认
+};
+
+/** @fn
+  * @brief
+  * @param [in]aa:
+  * @return
+  */
+struct Message {
+    int32_t type;   // see MsgType
+    char data[200]; // 对于不定长的字符串，我们只能规定一个长度
+};
+```
+
+这个数据包长度为204
+
+![fixed-packet-len](../images/fixed-packet-len.jpg)
+
+前4个字节是type，后200个字节是数据。
+
+因为是定长结构，所以假设A给B发送了Hello的文字，那么将浪费200-5=195个字节。
+
+![fixed-packet-len2](../images/fixed-packet-len2.jpg)
+
+这就是最大的问题。
+
+#### 包头+包体
+
+包头是固定长度，比如8个字节，16个字节。包头中有一个字段，记录了数据部的长度。
+
+```c++
+struct Header {
+    int len;     // 包体长度
+    int cmd;     // 信令
+};
+
+// 代表一个完整的包
+struct Packet {
+    Header header;  // 包头
+    char body[];    // 包体，c99柔性数组，必须是最后一个字段，不占内存空间
+};
+```
+
+Packet在内存中的结构如下：
+
+![tlv](../images/tlv-1.jpg)
+
+遇到粘包的时候，我们只要尝试读取头部，然后判断socket缓冲区余下的长度是否和超过或等于头部的长度，来决定是否处理。
+
+![tlv-2](../images/tlv2.jpg)
+
+处理流程如下（[来自](https://www.zhihu.com/question/20210025/answer/1982654161)）：
+
+![tcp-unpacket-splicing](../images/tcp-unpacket-splicing.jpeg)
+
+
+
+### TLV格式
+
+TLV是一种可变的格式，适合变长的数据包，意为：
+
+- Tag：该字段是关于标签和编码格式的信息
+- Lenght长度：该字段是定义数值的长度
+- Value值：表示实际的数值。
+
+Tag和Length的长度固定，一般那是2、4个字节（unsigned short 或 unsigned long ,具体用哪种编码和解析统一就行了，本文就取unsigned long类型）；Value的长度由Length指定；
+
+
+
+### 2种实现方式
+
+#### 自定义结构体
+
+#### Protobuf
+
+## 代码实现
+
+### V2版本：自定义结构方式
+
+我们以P2P聊天为例，现在我们需要知道对方是否真正收到了我方发送的消息，我们可以定义一个结构体：
+
+```c++
+// 消息类型，C++11，限定作用域
+enum class MsgType {
+    kMsgData=1, // 代表这是消息内容
     kMsgAck,  // 代表这是确认
 };
 
@@ -136,16 +254,61 @@ struct Message {
 };
 ```
 
-发送时，
+发送时，把type设置为kMsgData即可：
 
-#### 大小端问题
+```c++
+Message data{};
+data.type = static_cast<int>(MsgType::kMsgData); // 设置类型
+assert(text.length() < sizeof(data.data));
+::memcpy(data.data, text.c_str(), text.length());
 
-### TLV格式
+int ret = ::sendto(fd, &data, sizeof(data), 0, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
+```
 
-### 头部和数据步
+收到对方消息时，通过sendto，再发送一个type=kMsgAck的消息，说明我方已经收到：
 
-## V1版本：自定义结构方式
+```c++
+void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
+    Message message{};
 
-## V2版本：自定义结构体+TLV
+    ::memcpy(&message.type, buffer, sizeof(int32_t));
+    buffer += sizeof(int32_t); // 注意偏移
 
-## V3版本：TLV+Protobuf
+    assert(len <= sizeof(message));
+    ::memcpy(message.data, buffer, len);
+
+    if (static_cast<MsgType>(message.type) == MsgType::kMsgData) {
+      // 4. 收到消息
+      std::cout << "来自" << end_point << " " << std::string(message.data) << std::endl;
+
+      // 给对方回复收到
+      Message ack{};
+      ack.type = static_cast<int32_t>(MsgType::kMsgAck);
+
+      int ret = ::sendto(listenFd(), &ack, sizeof(ack), 0, (struct sockaddr *) &remote_addr,
+                         sizeof(remote_addr));
+      if (ret == -1) {
+        std::cout << "sendto error: " << errno << std::endl;
+      }
+    } else if (static_cast<MsgType>(message.type) == MsgType::kMsgAck) {
+      std::cout << "来自" << end_point << " " << " 收到对方的确认回复" << std::endl;
+    } else {
+      std::cout << "来自" << end_point << " " << " Unknown message type:" << message.type << std::endl;
+    }
+}
+```
+
+完整代码在：[../code/chapter2/3-project-udp-chat-v2](../code/chapter2/3-project-udp-chat-v2)
+
+### V3版本：自定义结构体+TLV
+
+### V4版本：TLV+Protobuf
+
+## 参考
+
+- [怎么解决TCP网络传输「粘包」问题？](https://www.zhihu.com/question/20210025/answer/1982654161)
+- [tcp粘包问题（经典分析）](https://blog.csdn.net/msdnwolaile/article/details/50769708)
+- [第1章 1.10计算机网络概述--OSI参考模型和TCP_IP协议](https://www.cnblogs.com/andy9468/p/10096606.html)
+- [Type–length–value](https://en.wikipedia.org/wiki/Type%E2%80%93length%E2%80%93value)
+- [TLV简介](https://www.cnblogs.com/tml839720759/archive/2014/07/13/3841820.html)
+- [Protobuf 序列化详解](https://gohalo.me/post/protobuf-protocol-serialize-introduce.html)
