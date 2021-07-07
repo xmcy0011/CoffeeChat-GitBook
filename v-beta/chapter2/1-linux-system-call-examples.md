@@ -258,6 +258,8 @@ while (true) { // 注意：这里是一个死循环，通常实际中不会这�
 
 #### Server
 
+代码在：[../code/chapter2/1-linux-socket-api-simaple/server](../code/chapter2/1-linux-socket-api-simaple/server)
+
 ```c++
 #include <iostream>
 
@@ -347,6 +349,8 @@ int main() {
 ```
 
 #### Client
+
+代码在：[../code/chapter2/1-linux-socket-api-simaple/client](../code/chapter2/1-linux-socket-api-simaple/client)
 
 ```c++
 #include <iostream>
