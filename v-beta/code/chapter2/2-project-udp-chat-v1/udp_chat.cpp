@@ -34,7 +34,7 @@ bool init_server_socket(const std::string &listen_ip, uint16_t port, int &out_fd
     struct sockaddr_in address{};
     address.sin_family = AF_INET; // 使用IPv4协议
     address.sin_port = htons(port); // 设置接收方端口号，转换成大端
-    address.sin_addr.s_addr = inet_addr(listen_ip.c_str()); //设置接收方IP
+    address.sin_addr.s_addr = inet_addr(listen_ip.c_str()); //设置接收方IP，
 
     int ret = bind(out_fd, (struct sockaddr *) &address, sizeof(address));
     if (ret < 0) {
@@ -55,7 +55,7 @@ bool init_server_socket(const std::string &listen_ip, uint16_t port, int &out_fd
 void recv_thread_proc(int listen_fd) {
     // 3. 不停的接收来自于远端的数据
     while (g_recv_thread_run_) {
-        struct sockaddr_in remote_addr = {0}; // 对方的IP和端口
+        struct sockaddr_in remote_addr = {0}; // 对方的IP和端口，即远程的ip和port
         socklen_t addr_len = sizeof(remote_addr); // socklen_t 是mac上的结构体，如果Linux编译不过，请换成int
 
         const int kRecvBufferLen = 1024; // 1 KB
@@ -69,7 +69,8 @@ void recv_thread_proc(int listen_fd) {
             break;
         }
 
-        // 4. 打印
+        // 4. 打印,结构体remote_addr中，存的是远程地址的ip和port，
+        // 通过remote_addr.sin_addr 和 remote_addr.sin_port来获取ip和port
         std::cout << "来自" << inet_ntoa(remote_addr.sin_addr) << ":" << remote_addr.sin_port << " "
                   << std::string(buffer) << std::endl;
     }
@@ -97,10 +98,19 @@ void clean(int listen_fd) {
   * @return
   */
 void split(const std::string &s, std::vector<std::string> &tokens, const std::string &delimiters = "") {
+    //从头开始找到分隔符后的第一个飞分隔符""的字符的索引
     std::string::size_type lastPos = s.find_first_not_of(delimiters, 0);
+
+    //从第一个分隔符lastpos开始往后找到第一个分隔符，并返回该分隔符的索引
     std::string::size_type pos = s.find_first_of(delimiters, lastPos);
+
+    //即从上面两个下标来截取一个字符串
     while (std::string::npos != pos || std::string::npos != lastPos) {
+        //emplace_back 在vector的结尾插入一个新的元素,相似的方法是push_back
+        //substr中第一个参数为：所需的子字符串的起始位置。字符串中第一个字符的索引为 0,默认值为0。
+        //substr中第二个参数为：复制的字符数目。
         tokens.emplace_back(s.substr(lastPos, pos - lastPos)); // C++11
+
         lastPos = s.find_first_not_of(delimiters, pos);
         pos = s.find_first_of(delimiters, lastPos);
     }
@@ -112,24 +122,25 @@ void split(const std::string &s, std::vector<std::string> &tokens, const std::st
   */
 void sigint(int value) {
     std::cout << "SIGINT, program exit" << std::endl;
-    clean(g_listen_fd);
+    clean(g_listen_fd);  // 标记，线程不继续运行
     exit(0);
 }
 
 int main() {
+    //即当输入ctrl + c时，将触发信号捕捉，实现线程退出，并打印信息
     signal(SIGINT, sigint); // 捕获ctrl+c信号
 
     ::srand(time(nullptr)); // 随机数种子
-    int random_port = rand() % UINT16_MAX + 3000; // 随机获取1个端口号
+    int random_port = rand() % UINT16_MAX + 3000; // uint16最大值为32767,随机获取1个端口号
 
     std::cout << "your port is: " << random_port << std::endl;
 
-    // 初始化接收socket
+    // 初始化接收socket,传入IP 和 port 获取文件描述符 g_listen_fd
     if (!init_server_socket(kListenIp, random_port, g_listen_fd)) {
         return 0;
     }
 
-    // 启动一个线程，不停接收消息
+    // 启动一个线程，不停接收消息,并打印远端连接用户的ip 和 port
     std::thread t(recv_thread_proc, g_listen_fd);
     t.detach();
 
@@ -146,15 +157,17 @@ int main() {
 
         // 格式校验
         std::vector<std::string> arr = {};
+        //切割input中的数据，并将这些数据存入arr数组中，即把ip 和 port 还有信息等存入arr数组中
         split(input, arr, " ");
-        if (arr.size() < 2) {
+        if (arr.size() < 2) { //格式为 [IP] [Port] [文本内容]，以空格隔开，回车结束，输入exit，退出程序
             std::cout << "错误的格式" << std::endl;
             continue;
         }
 
-        // 解析端口
+        // 解析端口，正常切割字符串，并存入arr后，arr[1]存的是port ，arr[0]存的是ip
+        //atoi 字符串转整数
         int remote_port = atoi(arr[1].c_str());
-        if (remote_port <= 0 || remote_port >= UINT16_MAX) {
+        if (remote_port <= 0 || remote_port >= UINT16_MAX) { //UINT16_MAX，内置类型，为65535
             std::cout << "错误的端口" << std::endl;
             continue;
         }
