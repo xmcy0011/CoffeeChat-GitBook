@@ -222,13 +222,117 @@ TLV是一种可变的格式，适合变长的数据包，意为：
 
 Tag和Length的长度固定，一般那是2、4个字节（unsigned short 或 unsigned long ,具体用哪种编码和解析统一就行了，本文就取unsigned long类型）；Value的长度由Length指定；
 
+我个人认为TLV是一种思想，就像大数据中元数据的概念，对数据进行描述，可以做很多事情。
+
+那么它到底有什么用呢？最出名的要数protobuf，我们待会说，先看一个问题。
+
+**试想一个场景：随着产品迭代，突然有一天你发现需要加字段**
+
+这是原来的结构体：
+
+```c++
+struct Message {
+    int32_t type;       // see MsgType
+    char data[32];      // 对于不定长的字符串，我们只能规定一个长度
+};
+```
+
+你是这样解析的：
+
+```c++
+int type = uitl::ReadInt32(buffer,len); // 先读取4个字节
+buffer+=4; // 偏移
+char data[32]={};
+::memcpy(data, buffer, sizeof(32));  // 再读区余下32个字节
+```
+
+为了代码美观，你不小心加到了这里：
+
+```c++
+struct Message {
+    int32_t type;       // see MsgType
+    int32_t to_user;    // 这里，增加了1个字段，占用4个字节
+    char data[32];      // 对于不定长的字符串，我们只能规定一个长度
+};
+```
+
+于是你通知大家一顿改，原来解析的时候，读取data数据，只需要偏移4个字节，现在要偏移8个字节了，平白增加了很多工作量。
+
+但是这不是最恐怖的，这个功能上线后，由于你没有考虑到老版本客户端的兼容问题，于是老客户端一收到新的消息就爆炸了（2边的解析对不上，格式改变了）。
+
+这个时候TLV就能派上用场了，我们看看protobuf是怎么使用TLV解决兼容问题的。
+
+[配图来源](https://www.jianshu.com/p/73c9ed3a4877)
+
+![protobuf-tlv-format](../images/protobuf-tlv-format.png)
+
+Protobuf将每个基本的数据类型都通过TLV表示（L可以省略，于是变成TV类型）：
+
+```bash
+WireType          Encoding     Length(Bytes)   Method             Type
+       0            Varint              1~10      T-V   int32 int64 uint32 uint64
+       1            Varint              1~10      T-V   int32 int64 uint32 uint64
+       2  Length Delimited            Length    T-L-V   string bytes embeded repeated
+
+       5    32-Bits     4-Bytes          TV      fixed32,sfixed32,float
+```
+
+[配图来源](https://gohalo.me/post/protobuf-protocol-serialize-introduce.html)
+
+![protobuf-format](../images/protobuf-format.png)
+
+假设，一开始我们的proto定义如下（以protobuf2为例）：
+
+```protobuf
+message person {
+	// wire type = 0，field_number =1
+	required int32     id = 1;           // required表示：这个字段必不可少
+	// wire type = 2，field_number =2
+	optional string    name = 2;         // optional表示：这个字段可为空
+}
+```
+
+后续又增加了一个age字段：
+
+```protobuf
+message person {
+	required int32     id = 1;           
+	optional string    name = 2;       
+	optional int32     age = 3;          // 我们增加了一个字段，标记为可空的
+}
+```
+
+因为我们标记了age是optional可选的，字段顺序是3，故原来客户端解析的代码将不受影响，皆大欢喜。
+
+### Protobuf
+
+看官方文档：
+
+- [Language Guide (proto3)](https://developers.google.com/protocol-buffers/docs/proto3)
+- [Protocol Buffer Basics: C++](https://developers.google.com/protocol-buffers/docs/cpptutorial)
 
 
-### 2种实现方式
 
-#### 自定义结构体
+或者这篇文章（这是protobuf2的）:
 
-#### Protobuf
+- [Protobuf入门一：在linux下编译使用protobuf](https://blog.csdn.net/asmartkiller/article/details/89454276)
+
+
+
+原理请参考：
+
+- [深入 ProtoBuf - 编码](https://www.jianshu.com/p/73c9ed3a4877)
+- [Protobuf 序列化详解](https://gohalo.me/post/protobuf-protocol-serialize-introduce.html)
+
+
+
+#### 编译protobuf和protocol
+
+#### 定义proto文件
+#### 生成C++文件
+
+#### 配置CMake工程，引入
+
 
 ## 代码实现
 
@@ -312,3 +416,4 @@ void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote
 - [Type–length–value](https://en.wikipedia.org/wiki/Type%E2%80%93length%E2%80%93value)
 - [TLV简介](https://www.cnblogs.com/tml839720759/archive/2014/07/13/3841820.html)
 - [Protobuf 序列化详解](https://gohalo.me/post/protobuf-protocol-serialize-introduce.html)
+- [深入 ProtoBuf - 编码](https://www.jianshu.com/p/73c9ed3a4877)

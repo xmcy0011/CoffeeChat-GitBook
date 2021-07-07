@@ -28,6 +28,12 @@ struct Header {
     int cmd;
 };
 
+struct Message {
+    int32_t type;       // see MsgType
+    char data[32];      // 对于不定长的字符串，我们只能规定一个长度
+    int to_user;        // 增加1个字段。
+};
+
 struct Packet {
     Header header;
     char body[];    // c99，柔性数组，必须是最后一个字段，不占内存空间
