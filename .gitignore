@@ -4,3 +4,4 @@ v1/_book_code/cmake-build-debug
 v-beta/_book
 v-beta/code/chapter2/1-linux-socket-api-simaple/client/cmake-build-debug
 v-beta/code/chapter2/1-linux-socket-api-simaple/server/cmake-build-debug
+v-beta/code/chapter2/2-project-udp-chat-v1/cmake-build-debug
