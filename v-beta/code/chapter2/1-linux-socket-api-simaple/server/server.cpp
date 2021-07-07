@@ -73,7 +73,7 @@ int main() {
                 std::cout << "recv error:" << errno << std::endl;
                 break;
 
-            } else {
+            } else {   //这里是一个echo服务，即服务端向客户端回复同样的内容
                 std::cout << "recv: " << buffer << ",len=" << len << std::endl;
                 // echo
                 len = send(fd, buffer, len, 0);
@@ -84,7 +84,7 @@ int main() {
             }
         }
 
-        // 关闭socket
+        // 关闭socket，shutdown可以指定在某个方向上终止连接
         ::close(fd);
         std::cout << "remote " << ::inet_ntoa(peerAddr.sin_addr) << "close connection" << std::endl;
     }
