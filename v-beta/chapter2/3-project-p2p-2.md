@@ -118,8 +118,34 @@ Content-Type: text/html  # 数据部内容，还有json/application格式，text
 
 我们以P2P聊天为例，现在我们需要知道对方是否真正收到了我方发送的消息，我们可以定义一个结构体：
 
+```c++
+// 消息类型
+enum class MsgType {
+    kMsgData, // 代表这是消息内容
+    kMsgAck,  // 代表这是确认
+};
 
+/** @fn
+  * @brief
+  * @param [in]aa:
+  * @return
+  */
+struct Message {
+    int type;       // see MsgType
+    char data[200]; // 对于不定长的字符串，我们只能规定一个长度
+};
+```
+
+发送时，
+
+#### 大小端问题
 
 ### TLV格式
 
 ### 头部和数据步
+
+## V1版本：自定义结构方式
+
+## V2版本：自定义结构体+TLV
+
+## V3版本：TLV+Protobuf

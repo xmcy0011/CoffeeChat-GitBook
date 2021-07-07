@@ -5,13 +5,14 @@
   */
 
 #include <sys/socket.h> // bind,recvfrom,close
-#include <netinet/in.h> // sockaddr_in
 #include <arpa/inet.h>  // htons
 #include <unistd.h>    // close
 
 #include <atomic> // 原子操作
 #include <thread> // std thread
 #include <iostream>
+
+#include "protocol.h"
 #include "udp_server.h"
 
 UdpServer::UdpServer() : listen_fd_(0), recv_thread_run_(true) {
@@ -87,15 +88,46 @@ void UdpServer::recvThreadProc() {
             break;
         }
 
-        // 4. 打印
-        std::cout << "来自" << inet_ntoa(remote_addr.sin_addr) << ":" << remote_addr.sin_port << " "
-                  << std::string(buffer) << std::endl;
+        // 4. 处理数据
+        onHandle(buffer, recv_len, remote_addr);
     }
     std::cout << "recv thread exit." << std::endl;
 }
 
 UdpServer::~UdpServer() {
     stop();
+}
+
+void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
+    std::string end_point = std::string(inet_ntoa(remote_addr.sin_addr)) + ":" +
+                            std::to_string(remote_addr.sin_port);
+
+    Message message{};
+
+    ::memcpy(&message.type, buffer, sizeof(int32_t));
+    buffer += sizeof(int32_t); // 注意偏移
+
+    assert(len <= sizeof(message));
+    ::memcpy(message.data, buffer, len);
+
+    if (static_cast<MsgType>(message.type) == MsgType::kMsgData) {
+        // 4. 收到消息
+        std::cout << "来自" << end_point << " " << std::string(message.data) << std::endl;
+
+        // 给对方回复收到
+        Message ack{};
+        ack.type = static_cast<int32_t>(MsgType::kMsgAck);
+
+        int ret = ::sendto(listenFd(), &ack, sizeof(ack), 0, (struct sockaddr *) &remote_addr,
+                           sizeof(remote_addr));
+        if (ret == -1) {
+            std::cout << "sendto error: " << errno << std::endl;
+        }
+    } else if (static_cast<MsgType>(message.type) == MsgType::kMsgAck) {
+        std::cout << "来自" << end_point << " " << " 收到对方的确认回复" << std::endl;
+    } else {
+        std::cout << "来自" << end_point << " " << " Unknown message type:" << message.type << std::endl;
+    }
 }
 
 

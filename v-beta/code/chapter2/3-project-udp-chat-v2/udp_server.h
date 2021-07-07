@@ -7,6 +7,7 @@
 #ifndef INC_3_PROJECT_UDP_CHAT_V2_UDP_SERVER_H_
 #define INC_3_PROJECT_UDP_CHAT_V2_UDP_SERVER_H_
 
+#include <netinet/in.h> // sockaddr_in
 #include <atomic>
 
 /** @class udp_server
@@ -60,6 +61,8 @@ private:
      * @return
      */
     void recvThreadProc();
+
+    void onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr);
 
     UdpServer();
 
