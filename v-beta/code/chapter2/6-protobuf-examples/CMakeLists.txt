@@ -15,4 +15,4 @@ add_executable(protobuf_examples
         pb/chat.msg.pb.h
         main.cpp)
 
-target_link_libraries(protobuf_examples protobuf)
+target_link_libraries(protobuf_examples protobuf -lprotobuf)
