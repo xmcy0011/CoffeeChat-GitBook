@@ -107,10 +107,13 @@ void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote
     ::memcpy(&message.type, buffer, sizeof(int32_t));
     buffer += sizeof(int32_t); // 注意偏移
 
+    //断言，若条件是否，则程序崩溃，一种静态调试手段
     assert(len <= sizeof(message));
     ::memcpy(message.data, buffer, len);
 
+    //
     if (static_cast<MsgType>(message.type) == MsgType::kMsgData) {
+        //MsgType是枚举类型，里面目前两个自断，一个字段用于说明这是消息内容，一个字段说 明这是确认消息
         // 4. 收到消息
         std::cout << "来自" << end_point << " " << std::string(message.data) << std::endl;
 

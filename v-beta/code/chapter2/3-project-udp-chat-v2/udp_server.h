@@ -7,6 +7,13 @@
 #ifndef INC_3_PROJECT_UDP_CHAT_V2_UDP_SERVER_H_
 #define INC_3_PROJECT_UDP_CHAT_V2_UDP_SERVER_H_
 
+#include <cstring>
+#include <cassert>
+#include <cstdio>
+#include <csignal>
+#include <cstdlib>
+
+
 #include <netinet/in.h> // sockaddr_in
 #include <atomic>
 

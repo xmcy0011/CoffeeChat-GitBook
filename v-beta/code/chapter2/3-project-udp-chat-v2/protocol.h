@@ -18,10 +18,10 @@ enum class MsgType {
   * @param [in]aa:
   * @return
   */
-struct Message {
-    int32_t type;       // see MsgType
-    char data[200]; // 对于不定长的字符串，我们只能规定一个长度
-};
+//struct Message {
+//    int32_t type;       // see MsgType
+//    char data[200]; // 对于不定长的字符串，我们只能规定一个长度
+//};
 
 struct Header {
     int len;

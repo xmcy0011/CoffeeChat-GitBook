@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 
 #include <sys/socket.h> // bind,recvfrom,close
 #include <netinet/in.h> // sockaddr_in
@@ -23,12 +24,19 @@ const std::string kListenIp = "0.0.0.0";
   * @return
   */
 void split(const std::string &s, std::vector<std::string> &tokens, const std::string &delimiters = "") {
-    std::string::size_type lastPos = s.find_first_not_of(delimiters, 0);
-    std::string::size_type pos = s.find_first_of(delimiters, lastPos);
-    while (std::string::npos != pos || std::string::npos != lastPos) {
-        tokens.emplace_back(s.substr(lastPos, pos - lastPos)); // C++11
-        lastPos = s.find_first_not_of(delimiters, pos);
-        pos = s.find_first_of(delimiters, lastPos);
+//    std::string::size_type lastPos = s.find_first_not_of(delimiters, 0);
+//    std::string::size_type pos = s.find_first_of(delimiters, lastPos);
+//
+//    while (std::string::npos != pos || std::string::npos != lastPos) {
+//        tokens.emplace_back(s.substr(lastPos, pos - lastPos)); // C++11
+//        lastPos = s.find_first_not_of(delimiters, pos);
+//        pos = s.find_first_of(delimiters, lastPos);
+//    }
+    //int i = 2;
+    std::istringstream getWord(s);
+    std::string singleWord;
+    while(getWord >> singleWord) {
+        tokens.push_back(singleWord);
     }
 }
 
@@ -61,9 +69,13 @@ int main() {
 
     // 主线程接收用户输入
     int fd = UdpServer::getInstance()->listenFd(); // 复用
+    bool flagNotice = true;
     while (true) {
         char input[200] = {};
-        std::cout << "请输入要发送的内容，格式为 [IP] [Port] [文本内容]，以空格隔开，回车结束，输入exit，退出程序" << std::endl;
+        if (flagNotice) {
+            std::cout << "请输入要发送的内容，格式为 [IP] [Port] [文本内容]，以空格隔开，回车结束，输入exit，退出程序" << std::endl;
+            flagNotice = false;
+        }
         std::cin.getline(input, sizeof(input), '\n');
 
         std::string input_str(input);
@@ -76,6 +88,7 @@ int main() {
         split(input, arr, " ");
         if (arr.size() < 3) {
             std::cout << "错误的格式" << std::endl;
+            flagNotice = true;
             continue;
         }
 
@@ -83,6 +96,7 @@ int main() {
         int remote_port = atoi(arr[1].c_str());
         if (remote_port <= 0 || remote_port >= UINT16_MAX) {
             std::cout << "错误的端口" << std::endl;
+            flagNotice = true;
             continue;
         }
 
