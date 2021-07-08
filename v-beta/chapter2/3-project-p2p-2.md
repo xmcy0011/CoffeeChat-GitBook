@@ -8,6 +8,139 @@
 
 这其实也就是自定义协议了。
 
+## 自定义协议示例
+
+我们先看一个例子，解释何为自定义协议。
+
+首先，原来是直接发送一个文本：
+
+```c++
+std::string text = input_str.substr(arr[0].length() + arr[1].length() + 2, input_str.length());
+// 直接发送文本
+int ret = ::sendto(g_listen_fd, text.c_str(), text.length(), 0, (struct sockaddr *) &dest_addr,sizeof(dest_addr));
+```
+
+现在，我们为了区分数据包是那种格式（确认消息或者文本内容），我们用一个整型来表示，假设使用int32_t，它是4个字节大小，因为文本内容不固定，为了方便解析，我们把这4个字节放在最前面，假设我们规定：
+
+- 数据包大小是固定长度，`每一个都是200字节`。
+
+- 数据包`开始4个字节存放一个整数type`，type表示后续的内容是什么
+
+  - 当type=1时，表示该数据包是聊天消息，包的内容应该是下面的格式（假设发送的文本内容为“hello”）：
+
+    ![private-protocol-examples](../images/private-protocol-examples.jpg)
+
+  - 当type=2时，代表用户收到了消息，给我方回复了一个确认包，包的内容应该如下：
+
+![private-protocol-examples-2](../images/private-protocol-examples2.jpg)
+
+- 为了明确知道对方收到了我方发送的文本消息，我们规定：当收到一个type=1的包后，需要立即回复一个type=2的包，即代表了我方收到了消息，给对方一个回复（任何一方收到消息，都需要回复一个ack确认）。
+
+  ![private-protocol-examples3](../images/private-protocol-examples3.jpg)
+
+下面我们来看一下用代码怎么写。
+
+### 封包
+
+网络上传输的都是二进制数据，在C++中，有基本数据类型（int32_t、int16_t、string），也有自定义数据类型（Struct、Class），所以我们需要把他们转换成二进制，这个过程就叫做封包。
+
+#### 聊天消息包
+
+```c++
+int UdpServer::sendMsgPacket(struct sockaddr_in &dest_addr, const std::string &text) {
+    char tempBuff[200] = {};
+    int32_t type = 1;           // type=1表示文本内容
+    ::memcpy(tempBuff, &type, sizeof(type)); // 转换为二进制，使用使用memcpy
+    ::memcpy(tempBuff + 4, text.c_str(), text.length()); // 注意，偏移4个字节存放文本内容
+
+    return ::sendto(UdpServer::getInstance()->listenFd(), tempBuff, sizeof(tempBuff), 0, 						 (struct sockaddr *) &dest_addr,sizeof(dest_addr));
+}
+```
+
+>  思考，为什么要使用int32_t，而不是int？int在不通的操作系统上大型不固定，在32位上可能是4个字节，在64位上可能是8个字节，我们使用int32_t现实声明这是一个4个字节的整形。
+
+#### 确认包
+
+```c++
+int UdpServer::sendAckPacket(struct sockaddr_in &dest_addr) {
+    char tempBuff[4] = {}; // 没有包体，所以只有4个字节大小
+    int32_t type = 2;      // type=2表示收到消息的确认
+    ::memcpy(tempBuff, &type, sizeof(type));
+
+    return ::sendto(UdpServer::getInstance()->listenFd(), tempBuff, sizeof(tempBuff), 0,             						(struct sockaddr *) &dest_addr,sizeof(dest_addr));
+}
+```
+
+#### 发送
+
+此时，根据上面的交互图，当用户输入文字后，调用sendMsgPacket发送一个聊天消息包，如果收到对方的消息包，则需要调用sendAckPacket发送一个ack确认包。
+
+### 解包
+
+因为有2种情况，根据上面的约定（协议），我们知道前4个字节一定是存放了一个int32_t的，所以我们需要先读取出来，再决定后面的怎么读。
+
+#### 读取头部（包头）
+
+```c++
+// buffer是接收缓冲区
+void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
+  	int32_t type = 0;
+    ::memcpy(&type, buffer, sizeof(int32_t));
+    buffer += sizeof(int32_t); // 注意偏移
+}
+```
+
+#### 读取数据部（包体）
+
+读取出来之后，我们根据type来判断是确认包还是聊天消息包，再进一步解析：
+
+```c++
+if (type == 1) { // 聊天消息
+    char data[196]={};
+    ::memcpy(data, buffer, len);  // 读取剩余196个字节，放到data里面
+}else if(type == 2){// 确认消息
+    // 确认消息只有头部，数据部都是0，我们不需要读取
+}
+```
+
+这个时候，就可以进行后续的逻辑处理了，是打印log，还是做其他。
+
+#### 接收
+
+完整示例代码如下：
+
+```c++
+void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
+    std::string end_point = std::string(inet_ntoa(remote_addr.sin_addr)) + ":" +
+                            std::to_string(remote_addr.sin_port);
+    // 我们知道前4个字节是一个整数，所以先转换出来
+    int32_t type = 0;
+    ::memcpy(&type, buffer, sizeof(int32_t));
+    buffer += sizeof(int32_t); // 已经取了4个字节，所以往后偏移，以方便继续取
+
+    if (type == 1) { // 消息包，继续取后面的内容
+        // 我们知道后面的是文本，也就是用户输入的内容，所以直接显示即可
+        char temp[196] = {}; // 因为是固定200大小，取了4个，就还有196个
+        // 加一个断言，当表达式为false后，程序崩溃，使用Clion调试时，会自动跳到这里
+        assert(len <= sizeof(temp));
+        ::memcpy(temp, buffer, len);
+
+        // 打印
+        std::cout << "来自" << end_point << " " << std::string(temp) << std::endl;
+
+        // 给对方回复收到
+        UdpServer::sendAckPacket(remote_addr);
+
+    } else if (type == 2) {
+        std::cout << "来自" << end_point << " " << " 收到对方的确认回复" << std::endl;
+    } else { // 未知的类型，显示一下即可
+        std::cout << "来自" << end_point << " " << " Unknown message type:" << type << std::endl;
+    }
+}
+```
+
+
+
 ## 协议
 
 在介绍自定义协议之前，我们先来看看，什么是协议。
@@ -210,7 +343,9 @@ Packet在内存中的结构如下：
 
 ![tcp-unpacket-splicing](../images/tcp-unpacket-splicing.jpeg)
 
+#### 一个自定义协议的示例
 
+为了加深理解，我们来看一下别人是如何实现自定义协议的
 
 ### TLV格式
 

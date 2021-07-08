@@ -101,33 +101,59 @@ UdpServer::~UdpServer() {
 void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
     std::string end_point = std::string(inet_ntoa(remote_addr.sin_addr)) + ":" +
                             std::to_string(remote_addr.sin_port);
+    // 我们知道前4个字节是一个整数，所以先转换出来
+    int32_t type = 0;
+    ::memcpy(&type, buffer, sizeof(int32_t));
+    buffer += sizeof(int32_t); // 已经取了4个字节，所以往后偏移，以方便继续取
 
-    Message message{};
+    if (type == 1) { // 消息包，继续取后面的内容
+        // 我们知道后面的是文本，也就是用户输入的内容，所以直接显示即可
+        char temp[196] = {}; // 因为是固定200大小，取了4个，就还有196个
+        assert((len - 4) <= sizeof(temp)); // 加一个断言，当表达式为false后，程序崩溃，使用Clion调试时，会自动跳到这里
+        ::memcpy(temp, buffer, len);
 
-    ::memcpy(&message.type, buffer, sizeof(int32_t));
-    buffer += sizeof(int32_t); // 注意偏移
-
-    assert(len <= sizeof(message));
-    ::memcpy(message.data, buffer, len);
-
-    if (static_cast<MsgType>(message.type) == MsgType::kMsgData) {
-        // 4. 收到消息
-        std::cout << "来自" << end_point << " " << std::string(message.data) << std::endl;
+        // 打印
+        std::cout << "来自" << end_point << " " << std::string(temp) << std::endl;
 
         // 给对方回复收到
-        Message ack{};
-        ack.type = static_cast<int32_t>(MsgType::kMsgAck);
+        UdpServer::sendAckPacket(remote_addr);
 
-        int ret = ::sendto(listenFd(), &ack, sizeof(ack), 0, (struct sockaddr *) &remote_addr,
-                           sizeof(remote_addr));
-        if (ret == -1) {
-            std::cout << "sendto error: " << errno << std::endl;
-        }
-    } else if (static_cast<MsgType>(message.type) == MsgType::kMsgAck) {
+    } else if (type == 2) {
         std::cout << "来自" << end_point << " " << " 收到对方的确认回复" << std::endl;
-    } else {
-        std::cout << "来自" << end_point << " " << " Unknown message type:" << message.type << std::endl;
+    } else { // 未知的类型，显示一下即可
+        std::cout << "来自" << end_point << " " << " Unknown message type:" << type << std::endl;
     }
+}
+
+int UdpServer::sendMsgPacket(struct sockaddr_in &dest_addr, const std::string &text) {
+#if 1
+    char tempBuff[200] = {};
+    int32_t type = 1;           // type=1表示文本内容，type=2表示收到消息的确认
+    ::memcpy(tempBuff, &type, sizeof(type));
+    // 注意，偏移4个字节存放文本内容
+    ::memcpy(tempBuff + 4, text.c_str(), text.length());
+
+    return ::sendto(UdpServer::getInstance()->listenFd(), tempBuff, sizeof(tempBuff), 0, (struct sockaddr *) &dest_addr,
+                    sizeof(dest_addr));
+#else
+    // 下面是结构体方式的用法
+    Message data{};
+    data.type = static_cast<int>(MsgType::kMsgData);
+    assert(text.length() < sizeof(data.data));
+    ::memcpy(data.data, text.c_str(), text.length());
+
+    return ::sendto(UdpServer::getInstance()->listenFd(), &data, sizeof(data), 0, (struct sockaddr *) &dest_addr,
+                    sizeof(dest_addr));
+#endif
+}
+
+int UdpServer::sendAckPacket(struct sockaddr_in &dest_addr) {
+    char tempBuff[4] = {}; // 没有包体，所以只有4个字节大小
+    int32_t type = 2;      // type=2表示收到消息的确认
+    ::memcpy(tempBuff, &type, sizeof(type));
+
+    return ::sendto(UdpServer::getInstance()->listenFd(), tempBuff, sizeof(tempBuff), 0, (struct sockaddr *) &dest_addr,
+                    sizeof(dest_addr));
 }
 
 

@@ -94,13 +94,7 @@ int main() {
 
         // 从第3位开始，都是要发送的内容，因为内容有可能有空格，所以要特殊处理以下
         std::string text = input_str.substr(arr[0].length() + arr[1].length() + 2, input_str.length());
-
-        Message data{};
-        data.type = static_cast<int>(MsgType::kMsgData);
-        assert(text.length() < sizeof(data.data));
-        ::memcpy(data.data, text.c_str(), text.length());
-
-        int ret = ::sendto(fd, &data, sizeof(data), 0, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
+        int ret = UdpServer::sendMsgPacket(dest_addr, text);
         if (ret == -1) {
             std::cout << "sendto error: " << errno << std::endl;
             break;

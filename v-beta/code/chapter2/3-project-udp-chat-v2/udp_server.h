@@ -27,6 +27,18 @@ public:
       */
     static UdpServer *getInstance();
 
+    /** @fn sendMsgPacket
+      * @brief 发送聊天消息包
+      * @return
+      */
+    static int sendMsgPacket(struct sockaddr_in &dest_addr, const std::string &text);
+
+    /** @fn sendAckPacket
+      * @brief 发送ack确认包
+      * @return
+      */
+    static int sendAckPacket(struct sockaddr_in &dest_addr);
+
 public:
     /** @fn Listen
       * @brief 初始化socket并且绑定IP
@@ -62,7 +74,7 @@ private:
      */
     void recvThreadProc();
 
-    void onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr);
+    static void onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr);
 
     UdpServer();
 
@@ -72,6 +84,5 @@ private:
     int listen_fd_;
     std::atomic_bool recv_thread_run_; // thread run flag
 };
-
 
 #endif //INC_3_PROJECT_UDP_CHAT_V2_UDP_SERVER_H_
