@@ -1,0 +1,9 @@
+// //可以进行注释，也支持/**/
+syntax = "proto3";  // 声明使用protobuf3
+package chat.base;  // 相当于C++中的namespace
+option java_package = "com.xmcy0011.chat.pb"; // java中的包名
+
+enum MsgType{
+    kMsgTypeUnknown = 0; // 未知
+    kMsgTypeText = 1;    // 文本消息
+}

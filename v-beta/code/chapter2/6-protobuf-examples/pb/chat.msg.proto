@@ -1,0 +1,16 @@
+syntax = "proto3";
+package chat.msg;
+option java_package = "com.xmcy0011.chat.msg"; // java中的包名
+
+import "chat.base.proto"; // 导入，此时可以使用里面的内容
+
+message MessageData {
+    uint32 to = 1;
+    chat.base.MsgType msg_type = 2;  // 引用chat.base.proto中的MsgType枚举
+    string msg = 3;     // 字符串，不定长度
+    optional bytes attach = 4;   // 字节数组，不定长度，这个字段可以为空，增加了optional选项
+}
+
+message MessageListRsp {
+    repeated MessageData msg_list = 1; // 还可以声明列表
+}

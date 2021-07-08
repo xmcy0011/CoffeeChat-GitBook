@@ -12,7 +12,6 @@
 #include <thread> // std thread
 #include <iostream>
 
-#include "protocol.h"
 #include "udp_server.h"
 
 UdpServer::UdpServer() : listen_fd_(0), recv_thread_run_(true) {

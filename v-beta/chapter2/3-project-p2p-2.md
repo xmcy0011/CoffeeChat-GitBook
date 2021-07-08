@@ -109,7 +109,7 @@ if (type == 1) { // 聊天消息
 
 #### 接收
 
-完整示例代码如下：
+完整示例代码如下（完整代码在[../code/chapter2/3-project-udp-chat-v2](../code/chapter2/3-project-udp-chat-v2)）：
 
 ```c++
 void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
@@ -225,17 +225,19 @@ Content-Type: text/html  # 数据部内容，还有json/application格式，text
 
 ### 何谓自定义协议
 
-被业界认可的，就是标准协议（比如HTTP，TCP，他们都有RFC文档可供查阅），反之，则是自定义协议（又称私有协议）。他们不被认可的，或者故意不公开，来保护安全。
+`被业界认可的，就是标准协议`（比如HTTP，TCP，他们都有RFC文档可供查阅），反之，`保密的，不公开的，则是自定义协议（又称私有协议）`。
 
-比如著名的QQ、MSN等等即时通信工具，都是使用的私有协议。据说QQ是基于UDP实现的，但是你不知道他们的数据包格式是啥，包含哪些请求。
+比如著名的QQ、MSN等等即时通信工具，都是使用的私有协议。据说QQ是基于UDP实现的，因为没公开，所以，你无法查阅他们的数据包是什么格式，包含哪些交互流程。
 
 [配图来源](https://www.cnblogs.com/andy9468/p/10096606.html)
 
 ![protocol-iso](../images/protocol-iso.png)
 
-自定义协议是在应用层实现的，就像HTTP协议一样都是应用层协议，你可以定义一个新的协议，HTTP使用文本，你可以使用二进制，或者使用结构体，这个取决于你。
+`自定义协议是在应用层实现的`，就像HTTP协议一样都是应用层协议，你可以定义一个新的协议，HTTP使用文本，你可以使用二进制，或者使用结构体，这个取决于你。
 
 ### 自定义协议的优劣
+
+相比标准协议，自定义协议有哪些好处呢？
 
 优势：
 
@@ -249,27 +251,32 @@ Content-Type: text/html  # 数据部内容，还有json/application格式，text
 - 复杂。要实现诸多细节，肯定复杂。
 - 工作量大。自己造轮子，哪有那么容易。
 
+`采用私有协议还是标准协议，取决于具体的场景`，在即时通信这个领域下，`出于安全性、低带宽等角度考虑，通常都会使用自定义协议的方式`。
 
+## 自定义协议进阶
 
-采用私有协议还是标准协议，取决于具体的场景，在即时通信这个领域下，出于安全性、低带宽等角度考虑，通常都会使用自定义协议的方式。
+文章的开头描述了一个简单的协议，实际中这样做有很多问题：
 
-## 自定义协议实现
+- 首先包固定长200个字节，代表用户发送的聊天消息最大只能有196个字母，98个汉字，这是不可忍受的。
+- 其次对于确认包，其实只有前面4个字节有用，后面196个都没有，造成了带宽的极大浪费。
 
-我们先看一下私有协议如何使用，以及如何定义。
+所以，我们的协议还有很大的改善空间，下面我们先系统的了解一些自定义协议都有哪些比较好的实现方式。
 
 ### 头部和数据部
 
-虽然我们的例子是基于UDP的，但是在实际开发中，从实现难度和效果层面衡量，我们都推荐使用TCP作为传输层协议，这里只是为了让大家方便理解。
+在前面的例子中，我们有一个简单的4个字节的头部，要解决上面的问题，我们势必要从协议的定义上面入手。我们的头部还是太简单了，我们先来看一个粘包问题（实际中需要处理，面试也会考察）。
+
+> 虽然我们的例子是基于UDP的，但是在实际开发中，从实现难度和效果层面衡量，我们都推荐使用TCP作为传输层协议，这里只是为了让大家方便理解。
 
 #### 粘包问题
 
-在实际的网络环境中，不管是TCP还是UDP，都可能遇到粘包问题，以TCP举例，可能的原因如下：
+在实际的网络环境中，不管是TCP还是UDP，都可能遇到粘包问题。以TCP举例，可能的原因如下：
 
-- 从数据发送的过程中，经过那些步骤来看：应用层首先要将自己的数据通过套接字发送，首先要调用一个write方法：（将应用进程缓冲区中的数据拷贝到套接口发送缓冲区SO_SNDBUF，有一个大小的限制），如果应用进程缓冲区的一条消息的字节的大小超过了发送缓冲区的大小，就有可能产生粘包问题，因为消息已经被分割了，有可能一部分已经被发送出去了，对方已经接受了，但是另外一部分可能刚放入套接口发送缓冲区里准备进一步发送，就直接导致接受的后一部分，直接导致了粘包问题的出现。
-- TCP是基于字节流的，只维护发送出去多少，确认了多少，并没有维护消息与消息之间的边界，因而极有可能导致粘包问题。（应该在应用层维护一个消息边界，通常使用TLV方式实现，下文有介绍）
-- 链路层所发送的数据有一个最大传输单元（MTU）的限制（以太网的MTU是1500bytes），如果我们所传输的信息超过了限制，那么会在IP层进行分组，或者分片，这也可能导致消息的粘包问题的产生。
-- TCP本身的算法导致，比如流量控制，拥塞控制算法等，也可能导致粘包
-- 网络延迟，导致收到了半包
+- 从数据发送的过程中，经过那些步骤来看：应用层首先要将自己的数据通过套接字发送，首先要调用一个write方法：（将应用进程缓冲区中的数据拷贝到套接口发送缓冲区SO_SNDBUF，有一个大小的限制），`如果应用进程缓冲区的一条消息的字节的大小超过了发送缓冲区的大小`，就有可能产生粘包问题，因为消息已经被分割了，有可能一部分已经被发送出去了，对方已经接受了，但是另外一部分可能刚放入套接口发送缓冲区里准备进一步发送，就直接导致接受的后一部分，直接导致了粘包问题的出现。
+- TCP是基于字节流的，只维护发送出去多少，确认了多少，`并没有维护消息与消息之间的边界`，因而极有可能导致粘包问题。（应该在应用层维护一个消息边界，通常使用TLV方式实现，下文有介绍）
+- 链路层所发送的数据有一个`最大传输单元（MTU）的限制（以太网的MTU是1500bytes）`，如果我们所传输的信息超过了限制，那么会在IP层进行分组，或者分片，这也可能导致消息的粘包问题的产生。
+- `TCP本身的算法导致`，比如流量控制，拥塞控制算法等，也可能导致粘包
+- `网络延迟`，导致收到了半包
 
 >  [配图来源](https://www.zhihu.com/question/20210025/answer/1982654161)
 
@@ -286,11 +293,11 @@ Content-Type: text/html  # 数据部内容，还有json/application格式，text
 - 第一种：浪费带宽，试想我们如何定义这个长度？让用户只能发送10个汉字还是32个汉字？
 - 第二种：选什么特殊符号好？如果用户发送的消息里面包含了\r\b，软件不是会出现BUG了？明明只发了一段话，结果你切割一下，变成了2句话。
 
-所以，`私有协议中主要使用第三种方式：包头+包体`，但是为了加深大家的理解，我们来看几个例子。
+所以，`私有协议中主要使用第三种方式：包头+包体`，我们来看几个例子。
 
 #### 定长数据包
 
-我们以P2P聊天为例，现在我们需要知道对方是否真正收到了我方发送的消息，我们可以定义一个结构体：
+也就是我们开头举的例，这里不一样的是，我们放到了一个结构体里面，代码会更清晰一点，但是因为上述的问题，`实际中不会这样干`。
 
 ```c++
 // 消息类型，C++11，限定作用域
@@ -316,11 +323,9 @@ struct Message {
 
 前4个字节是type，后200个字节是数据。
 
-因为是定长结构，所以假设A给B发送了Hello的文字，那么将浪费200-5=195个字节。
+因为是定长结构，所以假设A给B发送了Hello的文字，`那么将浪费200-5=195个字节，这就是最大的问题`。
 
 ![fixed-packet-len2](../images/fixed-packet-len2.jpg)
-
-这就是最大的问题。
 
 #### 包头+包体
 
@@ -350,10 +355,6 @@ Packet在内存中的结构如下：
 处理流程如下（[来自](https://www.zhihu.com/question/20210025/answer/1982654161)）：
 
 ![tcp-unpacket-splicing](../images/tcp-unpacket-splicing.jpeg)
-
-#### 一个自定义协议的示例
-
-为了加深理解，我们来看一下别人是如何实现自定义协议的
 
 ### TLV格式
 
@@ -409,7 +410,7 @@ struct Message {
 
 ![protobuf-tlv-format](../images/protobuf-tlv-format.png)
 
-Protobuf将每个基本的数据类型都通过TLV表示（L可以省略，于是变成TV类型）：
+`Protobuf将每个基本的数据类型都通过TLV表示`（L可以省略，于是变成TV类型），这样每个数据都可以自描述，不必依赖前一个字段，也就解决了兼容问题。
 
 ```bash
 WireType          Encoding     Length(Bytes)   Method             Type
@@ -449,32 +450,219 @@ message person {
 
 ### Protobuf
 
-看官方文档：
+通过对TLV的介绍，我们简单了解了一下protobuf，通过包头+包体（结构体）的方式，可以很好的解决固定长度包浪费带宽的问题，可以处理粘包的情况，那么，为什么还要使用protobuf？
 
-- [Language Guide (proto3)](https://developers.google.com/protocol-buffers/docs/proto3)
-- [Protocol Buffer Basics: C++](https://developers.google.com/protocol-buffers/docs/cpptutorial)
+#### 为什么使用Protobuf？
 
+对于App网络传输协议，我们比较常见的、可选的，有三种，分别是json/xml/protobuf，我们对比一下这三种格式的优缺点：
 
+- 优点
+  - json优点就是较XML格式更加小巧，传输效率较xml提高了很多，可读性还不错。
+  - xml优点就是可读性强，解析方便。
+  - protobuf优点就是传输效率快（据说在数据量大的时候，传输效率比xml和json快10-20倍），序列化后体积相比Json和XML很小，支持跨平台多语言，消息格式升级和兼容性还不错，序列化反序列化速度很快。
+- 缺点：
+  - json缺点就是传输效率也不是特别高（比xml快，但比protobuf要慢很多）。
+  - xml缺点就是效率不高，资源消耗过大。
+  - protobuf缺点就是使用不太方便。
 
-或者这篇文章（这是protobuf2的）:
+在一个需要大量的数据传输的场景中，如果数据量很大，那么选择protobuf可以明显的减少数据量，减少网络IO，从而减少网络传输所消耗的时间。考虑到作为一个主打社交的产品，消息数据量会非常大，同时为了节约流量，所以采用protobuf是一个不错的选择。
 
-- [Protobuf入门一：在linux下编译使用protobuf](https://blog.csdn.net/asmartkiller/article/details/89454276)
+> 关于Protobuf和Json速度的对比，可以看这篇文章：[Protobuf 有没有比 JSON 快 5 倍？](https://www.infoq.cn/article/json-is-5-times-faster-than-protobuf/)
 
+除此之外，使用protobuf还有如下好处：
 
+- protobuf通过proto文件定义，然后通过protoc工具生成对应的C++/Java/Go等源文件，省去了手动解析结构体的过程，大大提高了效率。
+- protobuf通过TLV格式，具有很好的兼容性，对于老版本的客户端，新增字段不影响解析
 
 原理请参考：
 
 - [深入 ProtoBuf - 编码](https://www.jianshu.com/p/73c9ed3a4877)
 - [Protobuf 序列化详解](https://gohalo.me/post/protobuf-protocol-serialize-introduce.html)
 
+#### protobuf使用
 
+使用protobuf的步骤如下：
 
-#### 编译protobuf和protocol
+1. 要使用protobuf，我们需要先定义一个proto文件，这是一个中间文件，会由protoc（protobuf编码编译而来，或者直接在github release页面下载）工具翻译成对应语言的源码文件。
+2. 在工程里面，包含protobuf的头文件，并且连接libprotobuf.a的库
+3. 把protoc生成的xxx.pb.h和xx.pb.cc加入到工程
+4. include "xxx.pb.h"来使用protobuf
+
+下面我们来看1个例子。
+
+##### protobuf examples
+
+完整代码在：[../code/chapter2/6-protobuf-examples](../code/chapter2/6-protobuf-examples)
+
+先创建2个proto文件（推荐使用vs code，然后安装protobuf插件）：
+
+chat.base.proto：
+
+```protobuf
+// //可以进行注释，也支持/**/
+syntax = "proto3";  // 声明使用protobuf3
+package chat.base;  // 相当于C++中的namespace
+option java_package = "com.xmcy0011.chat.pb"; // java中的包名
+
+// enum关键字定义一个枚举
+enum MsgType{
+    // 必须有一个默认值，如果以后升级，新增字段，老版本客户端解析时找不到枚举值，就会设置为默认值
+    kMsgTypeUnknown = 0; 
+    kMsgTypeText = 1;    // 文本消息
+    kMsgTypeVideo = 10;  // 可以跳跃
+}
+```
+
+chat.msg.proto：
+
+```protobuf
+syntax = "proto3";
+package chat.msg;
+option java_package = "com.xmcy0011.chat.msg"; // java中的包名
+
+import "chat.base.proto"; // 导入，此时可以使用里面的内容
+
+// 通过message定义一个结构体
+message MessageData {
+    uint32 to = 1;
+    chat.msg.MsgType msgType = 2;  // 引用chat.base.proto中的MsgType枚举
+    string msg = 3;     // 字符串，不定长度
+    optional bytes attach = 4;   // 字节数组，不定长度，这个字段可以为空，增加了optional选项
+}
+
+message MessageListRsp {
+    repeated MessageData msg_list = 1; // 还可以声明列表
+}
+```
+
+更多语法可以看官方文档：
+
+- [Language Guide (proto3)](https://developers.google.com/protocol-buffers/docs/proto3)
+- [语言指南 (proto3)](https://developers.google.com/protocol-buffers/docs/proto3)
+
+#### 下载编译protobuf
+
+```bash
+$ wget https://github.com/protocolbuffers/protobuf/releases/download/v3.17.3/protobuf-cpp-3.17.3.tar.gz
+$ tar -zxvf protobuf-cpp-3.17.3.tar.gz
+# --enable-shared=no 可指定使用静态库
+$ ./configure --prefix=/usr/local/protobuf3    # prefix：安装位置，即动态库等生成到这里
+$ make  # 编译
+$ make check
+$ sudo make install
+$ sudo ldconfig # refresh shared library cache.
+```
+
+为了方便起见，我们一般会安装在系统目录下，这样在其他项目中使用时就比较方便，会在同目录的lib中生成库文件：具体参考：[make-protobuf.sh](../code/chapter2/5-project-udp-chat-v4/make-protobuf.sh)
 
 #### 定义proto文件
+
+参考protobuf examples一节。
+
 #### 生成C++文件
 
+上面编译好之后，我们在 `/usr/local/protobuf3/` 下面得到一个 `protoc` 文件，此时用这个程序把proto文件，转换为C++文件，语法如下：
+
+```bash
+# cpp_out：在当前目录输出c++文件
+/usr/local/protobuf3/protoc --cpp_out=. chat.base.proto
+```
+
+执行后，我们得到了对于的头文件和源文件，如下：
+
+```
+-rw-r--r--  1 xuyc  staff   3001  7  8 15:55 chat.base.pb.cc
+-rw-r--r--  1 xuyc  staff   4386  7  8 15:55 chat.base.pb.h
+-rw-r--r--  1 xuyc  staff  24497  7  8 15:55 chat.msg.pb.cc
+-rw-r--r--  1 xuyc  staff  22434  7  8 15:55 chat.msg.pb.h
+```
+
 #### 配置CMake工程，引入
+
+假设我们的目录结构如下：
+
+```bash
+|-pb
+|  ｜-chat.base.pb.cc
+|  ｜-chat.base.pb.h
+|  ｜-chat.msg.pb.h
+|  ｜-chat.msg.pb.h
+|-main.cpp
+|-CMakeLists.txt
+```
+
+我们在CMakeLists.txt要这样配置：
+
+```cmake
+include_directories(/usr/local/protobuf3/include) # 执行make-protobuf.sh，后头文件会拷贝到这里
+link_directories(/usr/local/protobuf3/lib)  # 包含protobuf3所在库目录
+
+target_link_libraries(protobuf_examples protobuf) # 链接protobuf动态库, -lprotobuf代表静态库
+```
+
+#### 使用protobuf
+
+详细代码在[../code/chapter2/6-protobuf-examples](../code/chapter2/6-protobuf-examples)
+
+使用结构体（赋值）：
+
+```c++
+#include "pb/chat.base.pb.h"
+#include "pb/chat.msg.pb.h"
+
+int main() {
+    chat::msg::MessageData data = {};
+    // 赋值，通过set_xxx
+    data.set_msg("hello protobuf3");
+    data.set_to(8007);
+    data.set_msg_type(chat::base::MsgType::kMsgTypeText);
+    return 0;
+}
+```
+
+获取值：
+
+```c++
+std::cout << "data.to=" << data.to() << " ,data.msg=" << data.msg() << std::endl;
+```
+
+序列化和反序列化：
+
+```c++
+// data.ByteSizeLong() 返回结构体内存大小
+int struct_len = data.ByteSizeLong();
+char *buffer = new char[struct_len];
+data.SerializeToArray(buffer, struct_len);
+
+// 反序列化
+chat::msg::MessageData newData = {};
+if (!newData.ParseFromArray(buffer, struct_len)) {
+  std::cout << "ParseFromArray error:" << std::endl;
+}
+```
+
+列表：
+
+```c++
+chat::msg::MessageListRsp msg_list;
+for (int i = 0; i < 5; i++) {
+  auto it = msg_list.add_msg_list(); // 添加一个元素，返回指针，然后赋值
+  it->set_to(i);
+  it->set_msg("hello");
+  it->set_msg_type(chat::base::MsgType::kMsgTypeText);
+}
+
+// 循环
+for (int i = 0; i < new_msg_list.msg_list_size(); ++i) {
+  auto &item = new_msg_list.msg_list(i);
+
+  if (!item.has_attach()) {
+    std::cout << "to=" << item.to() << " ,msg=" << item.msg() << std::endl;
+  } else {
+    std::cout << "to=" << item.to() << " ,msg=" << item.msg() << ", attach=" << item.attach() << std::endl;
+  }
+}
+```
 
 
 ## 代码实现
@@ -560,3 +748,6 @@ void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote
 - [TLV简介](https://www.cnblogs.com/tml839720759/archive/2014/07/13/3841820.html)
 - [Protobuf 序列化详解](https://gohalo.me/post/protobuf-protocol-serialize-introduce.html)
 - [深入 ProtoBuf - 编码](https://www.jianshu.com/p/73c9ed3a4877)
+- [Protobuf 有没有比 JSON 快 5 倍？](https://www.infoq.cn/article/json-is-5-times-faster-than-protobuf/)
+- [Protobuf的优点](https://blog.csdn.net/chehec2010/article/details/89884442)
+- [Protobuf入门一：在linux下编译使用protobuf](https://blog.csdn.net/asmartkiller/article/details/89454276)

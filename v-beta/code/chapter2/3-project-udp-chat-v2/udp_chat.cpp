@@ -11,7 +11,6 @@
 
 #include <vector>
 
-#include "protocol.h"
 #include "udp_server.h"
 
 const std::string kListenIp = "0.0.0.0";
@@ -35,7 +34,7 @@ void split(const std::string &s, std::vector<std::string> &tokens, const std::st
     //int i = 2;
     std::istringstream getWord(s);
     std::string singleWord;
-    while(getWord >> singleWord) {
+    while (getWord >> singleWord) {
         tokens.push_back(singleWord);
     }
 }
@@ -68,7 +67,6 @@ int main() {
     UdpServer::getInstance()->run();
 
     // 主线程接收用户输入
-    int fd = UdpServer::getInstance()->listenFd(); // 复用
     bool flagNotice = true;
     while (true) {
         char input[200] = {};
