@@ -108,12 +108,12 @@ void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote
 
     if (type == 1) { // 消息包，继续取后面的内容
         // 我们知道后面的是文本，也就是用户输入的内容，所以直接显示即可
-        char temp[196] = {}; // 因为是固定200大小，取了4个，就还有196个
-        assert((len - 4) <= sizeof(temp)); // 加一个断言，当表达式为false后，程序崩溃，使用Clion调试时，会自动跳到这里
-        ::memcpy(temp, buffer, len);
+        char body[196] = {}; // 数据部长度，因为是固定200大小，取了4个，就还有196个
+        assert((len - 4) <= sizeof(body)); // 加一个断言，当表达式为false后，程序崩溃，使用Clion调试时，会自动跳到这里
+        ::memcpy(body, buffer, len);
 
         // 打印
-        std::cout << "来自" << end_point << " " << std::string(temp) << std::endl;
+        std::cout << "来自" << end_point << " " << std::string(body) << std::endl;
 
         // 给对方回复收到
         UdpServer::sendAckPacket(remote_addr);
