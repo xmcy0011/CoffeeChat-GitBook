@@ -594,6 +594,7 @@ $ sudo ldconfig # refresh shared library cache.
 我们在CMakeLists.txt要这样配置：
 
 ```cmake
+include_directories(pb) # 包含pb下面所有文件
 include_directories(/usr/local/protobuf3/include) # 执行make-protobuf.sh，后头文件会拷贝到这里
 link_directories(/usr/local/protobuf3/lib)  # 包含protobuf3所在库目录
 
