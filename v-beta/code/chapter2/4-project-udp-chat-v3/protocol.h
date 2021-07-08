@@ -19,9 +19,9 @@ struct Header {
 };
 
 // 代表一个完整的包
-struct Packet {
-    Header header;
-    char body[];    // c99，柔性数组，必须是最后一个字段，不占内存空间，大小取决于Header中的len
-};
+//struct Packet {
+//    Header header;
+//    char body[];    // c99，柔性数组，必须是最后一个字段，不占内存空间，大小取决于Header中的len
+//};
 
 #endif //UDP_CHAT_V2_PROTOCOL_H

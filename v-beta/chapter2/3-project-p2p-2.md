@@ -694,43 +694,100 @@ for (int i = 0; i < new_msg_list.msg_list_size(); ++i) {
 
 首先，我们对V2版本的代码做出改善，除了type之外，我们增加一个length，即可解决带宽浪费的问题，如下：
 
+#### 序列化（封包）
+
 原来的代码：
 
 ```c++
 int UdpServer::sendMsgPacket(struct sockaddr_in &dest_addr, const std::string &text) {
+    // 注意这里，固定长度
     char tempBuff[200] = {};
-    int32_t type = 1;           // type=1表示文本内容，type=2表示收到消息的确认
+    int32_t type = 1; // 头部4个字节
     ::memcpy(tempBuff, &type, sizeof(type));
-    // 注意，偏移4个字节存放文本内容
     ::memcpy(tempBuff + 4, text.c_str(), text.length());
 
-    return ::sendto(UdpServer::getInstance()->listenFd(), tempBuff, sizeof(tempBuff), 0, (struct sockaddr *) &dest_addr,
-                    sizeof(dest_addr));
+    // ...
 }
 ```
 
 改为：
 
 ```c++
+// 定义了一个头的结构体，一般长度是放在首位
 struct Header {
     int32_t len;
     int32_t cmd;
 };
 
 int UdpServer::sendMsgPacket(struct sockaddr_in &dest_addr, const std::string &text) {
-    // 一个头部
+    // 头部变成了8个字节
     Header header = {};
     header.len = text.length();
     header.cmd = static_cast<int32_t>(MsgType::kMsgData); // 改为枚举
 
     int buffer_len = sizeof(Header) + text.length();
     std::unique_ptr<char> tempBuff(new char[buffer_len]); // 智能指针，结束后自动释放内存
-    ::memcpy(tempBuff.get(), &header, sizeof(header)); // 填充头部
+    ::memcpy(tempBuff.get(), &header, sizeof(header));    // 填充头部
     // 注意，偏移8个字节存放文本内容
     ::memcpy(tempBuff.get() + 8, text.c_str(), text.length());
+		
+    // ...
+}
+```
 
-    return ::sendto(UdpServer::getInstance()->listenFd(), tempBuff.get(), sizeof(tempBuff), 0,
-                    (struct sockaddr *) &dest_addr, sizeof(dest_addr));
+#### 反序列化（解包）
+
+之前是：
+
+```c++
+void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
+    std::string end_point = std::string(inet_ntoa(remote_addr.sin_addr)) + ":" +
+                            std::to_string(remote_addr.sin_port);
+    // 我们知道前4个字节是一个整数，所以先转换出来
+    int32_t type = 0;
+    ::memcpy(&type, buffer, sizeof(int32_t));
+    buffer += sizeof(int32_t); // 已经取了4个字节，所以往后偏移，以方便继续取
+
+    if (type == 1) {
+        // 注意这里，是固定长度
+        char body[196] = {};
+        assert((len - 4) <= sizeof(body));
+        ::memcpy(body, buffer, len);
+      
+        // ...
+
+    } else if (type == 2) {
+        // ...
+    } else {
+        // ...
+    }
+}
+```
+
+改为：
+
+```c++
+void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
+    std::string end_point = std::string(inet_ntoa(remote_addr.sin_addr)) + ":" +
+                            std::to_string(remote_addr.sin_port);
+    // 解析头部
+    Header header = {};
+    ::memcpy(&header.len, buffer, sizeof(int32_t));
+    buffer += sizeof(int32_t); // 已经取了4个字节，所以往后偏移，以方便继续取
+    ::memcpy(&header.cmd, buffer, sizeof(int32_t));
+    buffer += sizeof(int32_t); // 继续偏移
+
+    if (header.cmd == static_cast<int>(MsgType::kMsgData)) {
+        // 我们知道后面的是文本，也就是用户输入的内容，所以直接显示即可
+        // 数据部长度，因为是固定200大小，取了4个，就还有196个
+        std::unique_ptr<char> body(new char[header.len]);
+
+        // ...
+    } else if (header.cmd == static_cast<int>(MsgType::kMsgAck)) {
+        // ...
+    } else {
+        // ...
+    }
 }
 ```
 

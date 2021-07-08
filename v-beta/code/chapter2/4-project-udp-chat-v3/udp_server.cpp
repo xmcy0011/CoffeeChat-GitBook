@@ -101,8 +101,7 @@ UdpServer::~UdpServer() {
 void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
     std::string end_point = std::string(inet_ntoa(remote_addr.sin_addr)) + ":" +
                             std::to_string(remote_addr.sin_port);
-    // 我们知道前4个字节是一个整数，所以先转换出来
-
+    // 解析头部
     Header header = {};
     ::memcpy(&header.len, buffer, sizeof(int32_t));
     buffer += sizeof(int32_t); // 已经取了4个字节，所以往后偏移，以方便继续取
