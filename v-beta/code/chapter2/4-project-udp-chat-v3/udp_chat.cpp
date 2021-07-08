@@ -68,7 +68,6 @@ int main() {
     UdpServer::getInstance()->run();
 
     // 主线程接收用户输入
-    int fd = UdpServer::getInstance()->listenFd(); // 复用
     bool flagNotice = true;
     while (true) {
         char input[200] = {};

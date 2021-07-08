@@ -665,80 +665,76 @@ for (int i = 0; i < new_msg_list.msg_list_size(); ++i) {
 }
 ```
 
+### 小结
 
-## 代码实现
+本节介绍了私有协议实现的3种方式：
 
-### V2版本：自定义结构方式
+- 固定数据包
+- 包头+包体
+  - 固定包头+结构体
+  - 固定包头+Protobuf
 
-我们以P2P聊天为例，现在我们需要知道对方是否真正收到了我方发送的消息，我们可以定义一个结构体：
+推荐使用第3种方式：包头+包体（protobuf），但是考虑到protobuf引入了额外的复杂度，我们本章先引入到项目中，先学会使用protobuf即可。
 
-```c++
-// 消息类型，C++11，限定作用域
-enum class MsgType {
-    kMsgData=1, // 代表这是消息内容
-    kMsgAck,  // 代表这是确认
-};
+## 代码实现总结
 
-/** @fn
-  * @brief
-  * @param [in]aa:
-  * @return
-  */
-struct Message {
-    int type;       // see MsgType
-    char data[200]; // 对于不定长的字符串，我们只能规定一个长度
-};
-```
+### V1版本：纯文本
 
-发送时，把type设置为kMsgData即可：
+完整代码在：[../code/chapter2/3-project-udp-chat-v1](../code/chapter2/3-project-udp-chat-v1)
 
-```c++
-Message data{};
-data.type = static_cast<int>(MsgType::kMsgData); // 设置类型
-assert(text.length() < sizeof(data.data));
-::memcpy(data.data, text.c_str(), text.length());
-
-int ret = ::sendto(fd, &data, sizeof(data), 0, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
-```
-
-收到对方消息时，通过sendto，再发送一个type=kMsgAck的消息，说明我方已经收到：
-
-```c++
-void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote_addr) {
-    Message message{};
-
-    ::memcpy(&message.type, buffer, sizeof(int32_t));
-    buffer += sizeof(int32_t); // 注意偏移
-
-    assert(len <= sizeof(message));
-    ::memcpy(message.data, buffer, len);
-
-    if (static_cast<MsgType>(message.type) == MsgType::kMsgData) {
-      // 4. 收到消息
-      std::cout << "来自" << end_point << " " << std::string(message.data) << std::endl;
-
-      // 给对方回复收到
-      Message ack{};
-      ack.type = static_cast<int32_t>(MsgType::kMsgAck);
-
-      int ret = ::sendto(listenFd(), &ack, sizeof(ack), 0, (struct sockaddr *) &remote_addr,
-                         sizeof(remote_addr));
-      if (ret == -1) {
-        std::cout << "sendto error: " << errno << std::endl;
-      }
-    } else if (static_cast<MsgType>(message.type) == MsgType::kMsgAck) {
-      std::cout << "来自" << end_point << " " << " 收到对方的确认回复" << std::endl;
-    } else {
-      std::cout << "来自" << end_point << " " << " Unknown message type:" << message.type << std::endl;
-    }
-}
-```
+### V2版本：自定义协议，固定包长
 
 完整代码在：[../code/chapter2/3-project-udp-chat-v2](../code/chapter2/3-project-udp-chat-v2)
 
-### V3版本：自定义结构体+TLV
+以上的2种方式，我们在前面的章节中都已介绍，接下来，第3个版本通过包头+包体的方式实现，解决固定包长浪费带宽的问题。
 
-### V4版本：TLV+Protobuf
+### V3版本：自定义协议，包头+包体
+
+完整代码在：[../code/chapter2/3-project-udp-chat-v3](../code/chapter2/3-project-udp-chat-v3)
+
+首先，我们对V2版本的代码做出改善，除了type之外，我们增加一个length，即可解决带宽浪费的问题，如下：
+
+原来的代码：
+
+```c++
+int UdpServer::sendMsgPacket(struct sockaddr_in &dest_addr, const std::string &text) {
+    char tempBuff[200] = {};
+    int32_t type = 1;           // type=1表示文本内容，type=2表示收到消息的确认
+    ::memcpy(tempBuff, &type, sizeof(type));
+    // 注意，偏移4个字节存放文本内容
+    ::memcpy(tempBuff + 4, text.c_str(), text.length());
+
+    return ::sendto(UdpServer::getInstance()->listenFd(), tempBuff, sizeof(tempBuff), 0, (struct sockaddr *) &dest_addr,
+                    sizeof(dest_addr));
+}
+```
+
+改为：
+
+```c++
+struct Header {
+    int32_t len;
+    int32_t cmd;
+};
+
+int UdpServer::sendMsgPacket(struct sockaddr_in &dest_addr, const std::string &text) {
+    // 一个头部
+    Header header = {};
+    header.len = text.length();
+    header.cmd = static_cast<int32_t>(MsgType::kMsgData); // 改为枚举
+
+    int buffer_len = sizeof(Header) + text.length();
+    std::unique_ptr<char> tempBuff(new char[buffer_len]); // 智能指针，结束后自动释放内存
+    ::memcpy(tempBuff.get(), &header, sizeof(header)); // 填充头部
+    // 注意，偏移8个字节存放文本内容
+    ::memcpy(tempBuff.get() + 8, text.c_str(), text.length());
+
+    return ::sendto(UdpServer::getInstance()->listenFd(), tempBuff.get(), sizeof(tempBuff), 0,
+                    (struct sockaddr *) &dest_addr, sizeof(dest_addr));
+}
+```
+
+
 
 ## 参考
 
