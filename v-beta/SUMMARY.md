@@ -1,11 +1,112 @@
 # Summary
 
 * [入门](chapter1/README.md)
-    * [环境准备](1-install-go-and-ide.md)
-    * [hello word](2-hello-world.md)
+    * [环境准备Go](chapter1/1-install-go-and-ide.md)
+    * [环境准备C++](chapter1/3-install-cpp-and-ide.md)
+    * [C++开发IDE基础：CMake和调试](chapter1/4-cpp-ide-clion.md)
+    * [hello word](chapter2/2-hello-world.md)
 
 - [网络编程基础](chapter2/README.md)
   - [网络编程Linux API介绍](./chapter2/1-linux-system-call-examples.md)
   - [实现局域网P2P聊天：基础功能](./chapter2/2-project-p2p.md)
-  - [实现局域网P2P聊天：高级功能，自定义协议和心跳包](./chapter2/3-project-p2p-2.md)
-  - [实现局域网P2P聊天：Protobuf](./chapter2/4-project-p2p-3.md)
+  - [实现局域网P2P聊天：自定义协议和消息确认](./chapter2/3-project-p2p-2.md)
+  - [C/S架构介绍：如何可以不用知道对方ip和对方聊天？](./chapter2/4-multi-p2p.md)
+  - [实现echo server（单线程）：借助第三方实现聊天机器人]()
+- [多线程编程基础](chapter3/README.md)
+  - [多线程概念：并发并行、进程调度、线程状态迁移、上下文切换](chapter3/1-thread-intro.md)
+  - [多线程编程API：pthread和std::thread](2-pthread-std-thread.md)
+  - [线程间通讯：互斥和同步](chapter3/3-thraed-sync.md)
+  - [多线程优化：无锁编程](chapter3/4-lock-free.md)
+  - [改进echo server（多线程版）：实现多个客户端同时连接支持](chapter4/9-echo-server-v2.md)
+- [TCP服务器开发基础](chapter4/)
+  - [服务器架构演进：单线程、多线程、I/O复用]()
+  - [I/O复用设计模式reactor详解：三种实现方式]()
+  - 网络编程进阶
+    - [大端和小端问题]()
+    - [tcp粘包问题和解决]()
+    - [交互模式：拉模式（请求和响应）和推模式（通知）]()
+  - [改进echo server（I/O multiplexing）：实现5万个客户端同时连接支持](chapter4/9-echo-server-v2.md)
+- [IM开发基础](chapter5/README.md)
+  - [开发msgserver，实现和任意在线的用户聊天（连接池）](chapter5/1-msg-server.md)
+  - [linux系统基础：为什么关闭终端以后，msgserver停止了？](chapter5/2-linux-base-deamon-tool.md)
+  - [代码实现后台运行：fork、vfork、?](chapter5/3-deamon-tool.md)
+  - [shell：实现服务快捷启动和停止以及PID文件](chapter5/4-shell.md)
+- [IM进阶：开发logic服务，实现消息存储](chapter5/README.md)
+  - [进程间通信和连接池]()
+  - [开发模式：瀑布]()
+  - [需求分析和概要设计](0)
+  - [项目管理：任务分解和进度计划]()
+  - [实现会话功能]()
+  - [实现聊天记录功能]()
+  - [实现未读计数功能]()
+  - [云服务器和公网部署基础](chapter4/5-install-in-internet.md)
+  - [扩展：分布式和进程间通信gRPC](chapter5/README.md)
+- IM进阶二（高级工程师）：开源项目TeamTalk的研究，理解十万级用户量的架构和实践
+  - 工程实践基础
+    - CMake工具链（单个项目、解决方案）和Clion开发工具，把msgserver改成cmake工程
+    - Shell脚本基础
+    - Gdb调试（开发环境、生产环境）
+    - Linux常用命令：查看日志tail和tail -f，ps查看进程，kill命令（kill -9）和常用信号，netstat -anp查看端口状态，systemctl restart/stop nginx
+    - CentOs7基础，yum的使用，防火墙，公网和局域网以及公网映射，常用目录结构，配置文件：/etc/xxx/xxx.conf，程序log：/var/xxx/log
+    - Git基础和SmartGit、SourceTree客户端
+    - 代码组织结构推荐，/home/repo/github存放源码。/data/xxx部署程序
+    - 管理第三方依赖：vcpkg介绍和使用，cmake中如何使用vcpkg
+  - TeamTalk开源项目入门
+    - 功能概述，代码编译，部署，使用
+    - 代码结构简介
+    - 服务器架构介绍
+    - - 模块一览
+      - 功能时序图
+  - 架构入门
+    - 何谓三高：高可用、高性能、高并发
+    - 通过前面的例子 + TeamTalk理解三高
+    - - 例子存在的问题
+      - 架构演进路线
+      - TeamTalk的高性能实现：多进程架构、负载均衡、集群化、缓存
+      - TeamTalk的高可用实现：双机主备、无状态设计可水平复制（水平扩展、垂直扩展）、守护进程、监控报警
+      - TeamTalk的高并发实现：如何支持1万人同时在线？epoll
+  - TeamTalk源码解析
+    - LoginServer详解以及负载均衡算法介绍和原理
+    - MsgServer详解
+  - TeamTalk改造
+    - bug修复
+    - - 只能支持1000个连接的BUG（实际上是因为ulimit是默认值）
+    - 文档和脚本完善
+    - - restart.sh和stop.sh脚本报错
+      - 实现ubuntu下编译脚本ubuntu_build.sh
+      - 改为vcpkg管理依赖
+    - 代码优化
+    - - 通过clion解决各种编译警告
+      - 使用c++11的一致性初始化
+      - 使用atomic避免加锁，提高性能
+      - 删除赋值构造
+      - 使用消息驱动表，优化消息处理代码逻辑
+      - 使用标准线程库（std::thread）代替pthread，实现跨平台支持
+      - 使用unordered_map代替map
+    - 功能完善
+    - - 支持图片消息
+      - 支持位置消息
+      - 支持语言消息
+      - 支持群聊功能
+  - 性能调优
+    - LoginServer调优
+    - HttpMsgServer调优
+    - MsgServer调优
+    - - 性能压测脚本
+      - 内存泄漏valgrind和问题解决
+  - websocket支持
+    - websocket入门
+    - websocket开发和测试
+  - 使用go重写httpmsgserver
+    - gin框架
+    - 发布
+- 面试和项目
+  - 如何做才能达到一年工作经验？
+  - helloim练习，顶1个月
+  - teamtalk研究编译学习，顶2个月
+  - teamtalk改造，根据内容多少，顶2个月
+  - 性能调优，顶2个月
+  - websocket支持，顶1个月
+  - 使用go重写httpmsgserver，3个月（包括学习go，写demo，开发，测试自己的服务，最后部署服务）
+- IM进阶三（架构师）：开源项目OpenIm研究，理解微服务，以及百万级用户量架构和实践
+  - to do
