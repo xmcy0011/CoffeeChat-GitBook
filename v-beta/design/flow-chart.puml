@@ -1,0 +1,24 @@
+1. client-Server-example
+@startuml
+A -> Server: 1.账号密码
+Server -> Server: 2.校验密码，查询用户ID
+Server -> Server: 3.插入用户IP、用户ID到字典
+A <-- Server: 4.返回校验结果，和用户ID
+
+B -> Server: 5.账号密码
+Server -> Server: 6.校验密码，查询用户ID
+Server -> Server: 7.插入用户IP、用户ID到字典
+B <-- Server: 8.返回校验结果，和用户ID
+
+A -> Server: 9.查询在线用户列表
+A <-- Server: 10.列表结果
+B -> Server: 11.查询在线用户列表
+B <-- Server: 12.列表结果
+
+A -> Server: 13.发送消息,from+to+msg
+A <-- Server: 14.Ack
+Server -> Server: 15.根据to，从字典查询B的IP端口
+Server -> B: 16.转发文本消息
+Server <-- B: 17.Ack
+B -> B: 18.显示消息，通过from字段判断是谁发的消息
+@enduml
