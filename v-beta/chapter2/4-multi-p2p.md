@@ -13,7 +13,7 @@
 
 所以，本章的目标是调整我们的架构，改成C/S（客户端-服务器）模式，所有的用户都与一个中间角色通信，这个中间角色（中介）来决定把消息投递给谁：
 
-![client-server-examle1](../images/client-server-example1.jpg)
+![client-server-examle1](../images/chapter2/client-server-example1.jpg)
 
 ## 路由问题
 
@@ -28,7 +28,7 @@
 - 客户端进入主界面。
 - 下一次请求，`客户端带上自己的用户ID`，这样服务器就知道是哪个客户端发过来的消息。
 
-![qq_login.jpeg](../images/qq_login.jpeg)
+![qq_login.jpeg](../images/chapter2/qq_login.jpeg)
 
 源的问题解决了，以前我只知道谁哪个IP给服务器发送消息，现在由客户端携带用户ID后，我同时知道了：
 
@@ -64,7 +64,7 @@ struct Message {
 
 我们用时序图来表示这整个过程：
 
-![multi-chat-conn-poll.png](../images/multi-chat-conn-poll.png)
+![multi-chat-conn-poll.png](../images/chapter2/multi-chat-conn-poll.png)
 
 - 步骤1-4：A先发起一个登录，此时Server查询用户ID返回给A
 - 步骤5-8：B和A的流程一致。此时Server知道了A和B的IP和ID，因为它维护了一张字典。

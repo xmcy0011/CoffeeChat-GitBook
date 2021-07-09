@@ -12,7 +12,7 @@
 
 下面看一张图，理解这些系统调用的关系（[来自](https://www.cnblogs.com/bugutian/p/4498324.html))：
 
-![flow-chart](../images/linux-socket-flow-chart.jpg)
+![flow-chart](../images/chapter2/linux-socket-flow-chart.jpg)
 
 下面是详细说明，快速回顾一下。
 

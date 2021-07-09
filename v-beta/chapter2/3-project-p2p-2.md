@@ -30,15 +30,15 @@ int ret = ::sendto(g_listen_fd, text.c_str(), text.length(), 0, (struct sockaddr
 
   - 当type=1时，表示该数据包是聊天消息，包的内容应该是下面的格式（假设发送的文本内容为“hello”）：
 
-    ![private-protocol-examples](../images/private-protocol-examples.jpg)
+    ![private-protocol-examples](../images/chapter2/private-protocol-examples.jpg)
 
   - 当type=2时，代表用户收到了消息，给我方回复了一个确认包，包的内容应该如下：
 
-![private-protocol-examples-2](../images/private-protocol-examples2.jpg)
+![private-protocol-examples-2](../images/chapter2/private-protocol-examples2.jpg)
 
 - 为了明确知道对方收到了我方发送的文本消息，我们规定：`当收到一个type=1的包后，需要立即回复一个type=2的包`，即代表了我方收到了消息，给对方一个回复（任何一方收到消息，都需要回复一个ack确认）。
 
-  ![private-protocol-examples3](../images/private-protocol-examples3.jpg)
+  ![private-protocol-examples3](../images/chapter2/private-protocol-examples3.jpg)
 
 下面我们来看一下用代码怎么写。
 
@@ -174,7 +174,7 @@ void UdpServer::onHandle(const char *buffer, int len, struct sockaddr_in &remote
 
 [配图来源](https://www.cnblogs.com/andy9468/p/10096606.html)
 
-![protocol2](../images/protocol-iso-2.png)
+![protocol2](../images/chapter2/protocol-iso-2.png)
 
 
 
@@ -231,7 +231,7 @@ Content-Type: text/html  # 数据部内容，还有json/application格式，text
 
 [配图来源](https://www.cnblogs.com/andy9468/p/10096606.html)
 
-![protocol-iso](../images/protocol-iso.png)
+![protocol-iso](../images/chapter2/protocol-iso.png)
 
 `自定义协议是在应用层实现的`，就像HTTP协议一样都是应用层协议，你可以定义一个新的协议，HTTP使用文本，你可以使用二进制，或者使用结构体，这个取决于你。
 
@@ -280,7 +280,7 @@ Content-Type: text/html  # 数据部内容，还有json/application格式，text
 
 >  [配图来源](https://www.zhihu.com/question/20210025/answer/1982654161)
 
-![tcp-packet-splicing](../images/tcp-packet-splicing.jpeg)
+![tcp-packet-splicing](../images/chapter2/tcp-packet-splicing.jpeg)
 
 通常解决方法有如下3种方式：
 
@@ -319,13 +319,13 @@ struct Message {
 
 这个数据包长度为204
 
-![fixed-packet-len](../images/fixed-packet-len.jpg)
+![fixed-packet-len](../images/chapter2/fixed-packet-len.jpg)
 
 前4个字节是type，后200个字节是数据。
 
 因为是定长结构，所以假设A给B发送了Hello的文字，`那么将浪费200-5=195个字节，这就是最大的问题`。
 
-![fixed-packet-len2](../images/fixed-packet-len2.jpg)
+![fixed-packet-len2](../images/chapter2/fixed-packet-len2.jpg)
 
 #### 包头+包体
 
@@ -346,15 +346,15 @@ struct Packet {
 
 Packet在内存中的结构如下：
 
-![tlv](../images/tlv-1.jpg)
+![tlv](../images/chapter2/tlv-1.jpg)
 
 遇到粘包的时候，我们只要尝试读取头部，然后判断socket缓冲区余下的长度是否和超过或等于头部的长度，来决定是否处理。
 
-![tlv-2](../images/tlv2.jpg)
+![tlv-2](../images/chapter2/tlv2.jpg)
 
 处理流程如下（[来自](https://www.zhihu.com/question/20210025/answer/1982654161)）：
 
-![tcp-unpacket-splicing](../images/tcp-unpacket-splicing.jpeg)
+![tcp-unpacket-splicing](../images/chapter2/tcp-unpacket-splicing.jpeg)
 
 ### TLV格式
 
@@ -408,7 +408,7 @@ struct Message {
 
 [配图来源](https://www.jianshu.com/p/73c9ed3a4877)
 
-![protobuf-tlv-format](../images/protobuf-tlv-format.png)
+![protobuf-tlv-format](../images/chapter2/protobuf-tlv-format.png)
 
 `Protobuf将每个基本的数据类型都通过TLV表示`（L可以省略，于是变成TV类型），这样每个数据都可以自描述，不必依赖前一个字段，也就解决了兼容问题。
 
@@ -423,7 +423,7 @@ WireType          Encoding     Length(Bytes)   Method             Type
 
 [配图来源](https://gohalo.me/post/protobuf-protocol-serialize-introduce.html)
 
-![protobuf-format](../images/protobuf-format.png)
+![protobuf-format](../images/chapter2/protobuf-format.png)
 
 假设，一开始我们的proto定义如下（以protobuf2为例）：
 
@@ -817,7 +817,7 @@ already send
 
 通过增加一个用户状态，来从入口层面进行区分，就像以前用过的QQ一样，QQ好友在线，头像就是亮的，离线就是灰色的。但是在P2P的场景下，我们没有服务器进程，所以无法从一个地方集中获取，在局域网聊天中，这种功能可以通过广播消息实现，这就是另外一个主题，这里暂且不谈。有兴趣的可以看一下这篇文章：[UDP 单播、广播、多播](https://www.cnblogs.com/yyy1234/p/10417383.html)
 
-![udp-broadcast](../images/udp-broadcast.png)
+![udp-broadcast](../images/chapter2/udp-broadcast.png)
 
 #### 离线消息
 
