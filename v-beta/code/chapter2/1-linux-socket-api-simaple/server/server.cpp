@@ -70,7 +70,7 @@ int main() {
                 break;
 
             } else if (len == 0) { // 返回0代表对端关闭了连接
-                std::cout << "recv error:" << errno << std::endl;
+                std::cout << "remote close the connection " << std::endl;
                 break;
 
             } else {   //这里是一个echo服务，即服务端向客户端回复同样的内容
