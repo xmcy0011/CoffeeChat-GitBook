@@ -52,7 +52,7 @@ int main() {
             std::cout << "send error:" << errno << std::endl;
             break;
         }
-        std::cout << "AI:" << recvBuffer << std::endl;
+        std::cout << "AI:" << std::string(recvBuffer, ret) << std::endl;
     }
 
     // 关闭socket的两端，关闭后，如服务的recv()阻塞会立即返回0，标志客户端的连接已端开

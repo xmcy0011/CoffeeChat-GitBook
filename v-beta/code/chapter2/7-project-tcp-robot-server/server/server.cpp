@@ -10,40 +10,9 @@
 #include <locale>   // string 和 wstring互转
 #include <codecvt>
 
+#include "wechat_api.h"
+
 const int kSocketError = -1;
-
-/** @fn s2ws
-  * @brief utf8 string convert to wstring
-  * @param [in]str: utf8 string
-  * @return utf8 wstring
-  */
-std::wstring s2ws(const std::string &str) {
-    using convert_typeX = std::codecvt_utf8<wchar_t>;
-    std::wstring_convert<convert_typeX, wchar_t> converterX;
-
-    return converterX.from_bytes(str);
-}
-
-/** @fn ws2s
-  * @brief utf8 wstring convert to string
-  * @param [in]str: utf8 wstring
-  * @return utf8 string
-  */
-std::string ws2s(const std::wstring &w_str) {
-    using convert_typeX = std::codecvt_utf8<wchar_t>;
-    std::wstring_convert<convert_typeX, wchar_t> converterX;
-
-    return converterX.to_bytes(w_str);
-}
-
-// 字符串替换
-void replace_all(std::wstring &origin, const std::wstring &mark, const std::wstring &replacement = L"") {
-    std::size_t pos = origin.find(mark);
-    while (pos != std::string::npos) {
-        origin.replace(pos, mark.length(), replacement);
-        pos = origin.find(mark);
-    }
-}
 
 class TcpServer {
 public:
@@ -136,27 +105,93 @@ public:
                 } else { //这里是一个echo服务，即服务端向客户端回复同样的内容
                     std::cout << "recv: " << buffer << ",len=" << len << std::endl;
 
-                    std::string text(buffer, len);
-                    std::wstring str = s2ws(text);  // 转换成宽字符，一个字符占4个字节
-
-                    replace_all(str, L"吗");
-                    replace_all(str, L"?", L"!");
-                    replace_all(str, L"？", L"!"); // 全角问号
-
-                    text = ws2s(str);// 注意，再转换回来
-
-                    // echo
-                    len = send(fd, text.c_str(), text.length(), 0);
-                    if (len == kSocketError) {
-                        std::cout << "send error:" << errno << std::endl;
-                        break;
-                    }
+                    onHandle(fd, buffer, len);
                 }
             }
 
             // 关闭socket，shutdown可以指定在某个方向上终止连接
             ::close(fd);
-            std::cout << "remote " << ::inet_ntoa(peerAddr.sin_addr) << "close connection" << std::endl;
+            std::cout << "remote " << ::inet_ntoa(peerAddr.sin_addr) << " disconnect" << std::endl;
+        }
+    }
+
+private:
+    /** @fn s2ws
+      * @brief utf8 string convert to wstring
+      * @param [in]str: utf8 string
+      * @return utf8 wstring
+      */
+    std::wstring s2ws(const std::string &str) {
+        using convert_typeX = std::codecvt_utf8<wchar_t>;
+        std::wstring_convert<convert_typeX, wchar_t> converterX;
+
+        return converterX.from_bytes(str);
+    }
+
+    /** @fn ws2s
+      * @brief utf8 wstring convert to string
+      * @param [in]str: utf8 wstring
+      * @return utf8 string
+      */
+    std::string ws2s(const std::wstring &w_str) {
+        using convert_typeX = std::codecvt_utf8<wchar_t>;
+        std::wstring_convert<convert_typeX, wchar_t> converterX;
+
+        return converterX.to_bytes(w_str);
+    }
+
+    /** @fn replace_all
+      * @brief 字符串替换
+      */
+    void replace_all(std::wstring &origin, const std::wstring &mark, const std::wstring &replacement = L"") {
+        std::size_t pos = origin.find(mark);
+        while (pos != std::string::npos) {
+            origin.replace(pos, mark.length(), replacement);
+            pos = origin.find(mark);
+        }
+    }
+
+    /** @fn simple_ai
+      * @brief 价值1个亿的AI代码
+      */
+    std::string simple_ai(std::string &text) {
+        std::wstring str = s2ws(text);  // 转换成宽字符，一个字符占4个字节
+
+        replace_all(str, L"吗");
+        replace_all(str, L"?", L"!");
+        replace_all(str, L"？", L"!"); // 全角问号
+
+        return ws2s(str);// 注意，再转换回来
+    }
+
+    /** @fn getAnswer
+      * @brief 获取回答
+      */
+    std::string getAnswer(std::string &text, int type = 1) {
+        if (type == 1) {
+            return simple_ai(text);
+        }
+        std::string answer;
+        if (WeChatApi::getAnswer(text, answer)) {
+            return answer;
+        }
+        return "机器人出错啦，请过一会试试呢";
+    }
+
+    void onHandle(int fd, char *buffer, int len) {
+        std::string text(buffer, len);
+
+        enum {
+            Simple = 1,
+            UseWeChat = 2,
+        };
+
+        std::string answer = getAnswer(text, UseWeChat);
+
+        // echo
+        len = send(fd, answer.c_str(), answer.length(), 0);
+        if (len == kSocketError) {
+            std::cout << "send error:" << errno << std::endl;
         }
     }
 
@@ -175,6 +210,9 @@ int main() {
 //    replace_all(str, L"?", L"!");
 //    replace_all(str, L"？", L"!"); // 全角问号
 //    std::cout << ws2s(str) << std::endl;
+
+//    std::string answer;
+//    WeChatApi::getAnswer("你好啊小微", answer);
 
     TcpServer server;
     //server.init(inet_addr("127.0.0.1"), 8088);

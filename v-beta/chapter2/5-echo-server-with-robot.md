@@ -109,6 +109,8 @@ while (true) {
 
 ### 实现价值1个亿的AI代码
 
+完整代码在：[../code/chapter2/7-project-tcp-robot-server/server](../code/chapter2/7-project-tcp-robot-server/server)
+
 ```bash
 我：在吗？
 AI：在！
@@ -131,34 +133,183 @@ str = str.replace("？","!"); // 替换全角？号
 在c++中，全角符号占2个汉字，可以使用wstring处理。这不是我们的重点，所以掠过。根据上面的替换逻辑，只需要在发送前替换一下即可，示例代码如下：
 
 ```c++
-// 字符串替换
-void replace_all(std::string &origin, const std::string &mark, const std::string &replacement = "") {
-    std::size_t pos = origin.find(mark);
-    while (pos != std::string::npos) {
-        origin.replace(pos, mark.length(), replacement);
-        pos = origin.find(mark);
-    }
-}
-
-int main(){
-  // ...
-
+void onHandle(char *buffer, int len) {
   std::string text(buffer, len);
-  replace_all(text, "吗");
-  replace_all(text, "?", "!");
+  std::wstring str = s2ws(text);  // 转换成宽字符，一个字符占4个字节
+
+  replace_all(str, L"吗");
+  replace_all(str, L"?", L"!");
+  replace_all(str, L"？", L"!"); // 全角问号
+
+  text = ws2s(str);// 注意，再转换回来
 
   // echo
-  len = send(fd, text.c_str(), text.length(), 0);
+  len = send(listen_fd_, text.c_str(), text.length(), 0);
   if (len == kSocketError) {
     std::cout << "send error:" << errno << std::endl;
-    break;
   }
-
-  // ...
 }
 ```
 
+### 对话机器人
 
+虽然我们不再是给客户端固定返回同样的内容，稍微有了一些变化，但还是有点low，我们能不能接入真正的机器人呢？就像智能音箱一样，可以查天气、放歌曲、查菜谱等等。
+
+这里就不能不提一个知识库的概念。在问答领域，用户输入一个关键词，然后AI引擎去知识库匹配，找到一条相近的问题，然后返回其对应的答案。知识库的内容越多，机器人就能回答的问题越多，也就越聪明。所以知识库也一定程度上反应了机器人的聪明程度。
+
+在智能问答这个领域，我们可以自己建设知识库，也可以使用别人的：
+
+- `小爱同学`开放了API，我们可以免费在 https://developers.xiaoai.mi.com/ 申请使用。
+- `图灵机器人`是商用的，适合企业用户，我们一般用它来做闲聊服务
+- `小微机器人`自于微信团队，在 [微信对话开放平台](https://openai.weixin.qq.com/) 可免费创建和使用，内置了很多词典，我们主要基于它来实现我们自己的对话机器人。
+
+#### 创建机器人
+
+首先，我们登录 [微信对话开放平台](https://openai.weixin.qq.com/) ，通过头像下拉框，选择创建机器人
+
+![wechat-robot](../images/chapter2/wechat-robot-create.jpg)
+
+#### 启用技能
+
+点击左侧自动对话菜单，然后在右侧可以启用需要的技能，然后在机器人调试页面，按照格式输入，即可查看效果。
+
+![wechat-robot-2](../images/chapter2/wechat-robot-skill.jpg)
+
+#### 获取机器人Token
+
+创建好机器人后，我们如何在我们的robot_server中使用这个机器人呢？我们点击绑定应用->开放接口，然后把TOKEN后面的值拷贝下来。
+
+![wechat-robot-api](../images/chapter2/wechat-robot-api.jpg)
+
+#### 机器人接口使用
+
+微信的官方文档中（[智能对话](https://developers.weixin.qq.com/doc/aispeech/platform/INTERFACEDOCUMENT.html)），调用机器人的HTTP接口，共分为2步：
+
+1. 获取签名（signature），需要传递TOKEN。
+
+   ```json
+   https://openai.weixin.qq.com/openapi/sign/{TOKEN} POST
+   {
+   	"username":"test",
+   	"avatar":"",
+   	"userid":20200518
+   }
+   ```
+
+2. 智能对话接口，传递问题，获取回答。
+
+   ```json
+   https://openai.weixin.qq.com/openapi/aibot/{TOKEN} POST
+   {
+   "signature":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJhdmF0YXIiOiIiLCJ1c2VyaWQiOjIwMjAwNTE4LCJpYXQiOjE2MjYwNzMxMDcsImV4cCI6MTYyNjA4MDMwN30.odmYsGKIQ-UZKIU3kPWBRqQrnn8NVw1PE_54S95Y40U",
+   	"query":"你好呀，小微",
+   	"env":"debug"
+   }
+   ```
+
+### 代码实现
+
+##### 封装机器人API
+
+完整代码在[../code/chapter2/7-project-tcp-robot-server/server/wechat_api.h](../code/chapter2/7-project-tcp-robot-server/server/wechat_api.h)：
+
+```c++
+bool WeChatApi::getSignature(const std::string &token, std::string &signature, int &expires_in) {
+    std::string host = "openai.weixin.qq.com";
+    std::string url = "https://openai.weixin.qq.com/openapi/sign/" + kRobotToken;
+    httplib::SSLClient client(host);
+
+    json j;
+    j["username"] = kDefaultUserId;
+    j["avatar"] = "";
+    j["userid"] = kDefaultUserId;
+    std::string body = j.dump();
+
+    auto res = client.Post(url.c_str(), body, "application/json");
+    if (res != nullptr && res->status == 200) {
+        std::cout << res->body << std::endl;
+
+        json root = json::parse(res->body);
+        if (!root.is_null()) {
+            signature = root["signature"].get<std::string>();
+            expires_in = root["expiresIn"].get<int>();
+            std::cout << "signature=" << signature << ",expiresIn=" << expires_in << std::endl;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool WeChatApi::query(const std::string &signature, const std::string &question, std::string &answer) {
+    std::string host = "openai.weixin.qq.com";
+    std::string url = "https://openai.weixin.qq.com/openapi/aibot/" + kRobotToken;
+    httplib::SSLClient client(host);
+
+    json j;
+    j["signature"] = signature;
+    j["query"] = question;
+    j["env"] = "debug";
+    std::string body = j.dump();
+
+    auto res = client.Post(url.c_str(), body, "application/json");
+    if (res != nullptr && res->status == 200) {
+        std::cout << res->body << std::endl;
+
+        json root = json::parse(res->body);
+        if (!root.is_null()) {
+            answer = root["answer"].get<std::string>();
+            std::cout << "answer = " << answer << std::endl;
+            return true;
+        }
+    }
+
+    return false;
+}
+```
+
+##### 集成
+
+此时，在我们的tcp服务器中，只需要调用上述2个接口，获取一个机器人返回的答案，然后发送给客户端即可。
+
+```c++
+/** @fn getAnswer
+      * @brief 获取回答
+      */
+std::string getAnswer(std::string &text, int type = 1) {
+  if (type == 1) {
+    return simple_ai(text);
+  }
+  std::string answer;
+  if (WeChatApi::getAnswer(text, answer)) {
+    return answer;
+  }
+  return "机器人出错啦，请过一会试试呢";
+}
+
+void onHandle(int fd, char *buffer, int len) {
+  std::string text(buffer, len);
+
+  enum {
+    Simple = 1,
+    UseWeChat = 2,
+  };
+
+  std::string answer = getAnswer(text, UseWeChat);
+
+  // echo
+  len = send(fd, answer.c_str(), answer.length(), 0);
+  if (len == kSocketError) {
+    std::cout << "send error:" << errno << std::endl;
+  }
+}
+```
+
+### 效果
+
+[完整代码](../code/chapter2/7-project-tcp-robot-server/server)
+
+![wechat-robot-snaphot](../images/chapter2/wechat-robot-snaphot.png)
 
 ## 参考
 
