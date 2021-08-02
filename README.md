@@ -20,6 +20,7 @@ see: [GitHub Pages](https://xmcy0011.github.io/CoffeeChat-GitBook/)
     * [x] [第7节 关于Linux开发环境](v1/chapter2/7-linux-develop-environment.md)
     * [x] [第8节 大端和小端](v1/chapter2/8-endian.md)
     * [ ] [第9节 Linux Socket API介绍](v1/chapter2/9-linux-socket-api-intro.md) 30%
+    * [x] [第10节 高性能I/O](v1/chapter2/10-linux-io-multiplexing.md)
 * [x] [第二章 系统设计](v1/chapter3/README.md)
     * [ ] [第1节 设计目标](v1/chapter3/1-design-object.md) 1%
     * [ ] [第2节 物理架构](v1/chapter3/2-physical-architecture.md) 1%
