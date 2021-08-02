@@ -9,7 +9,7 @@ I/O(input/output)，即输入输出设备，现实中键盘和鼠标是输入设
 
 所以，不难理解在Linux的API中，为什么发送TCP数据包可以调用write()，接收数据包可以调用read()了，在《Linux-UNIX系统编程手册》中第56.5.4节流socket I/O中有描述：
 
-![socket-io](D:/repo/github/GitBook-IM/v1/images/socket-io.jpg)
+![socket-io](../images/socket-io.jpg)
 
 《Netty权威指南 第2版》1.1.1节也有描述：
 
@@ -43,7 +43,7 @@ while(true){
 
 #### 阻塞式I/O
 
-![阻塞式I/O](D:/repo/github/GitBook-IM/v1/images/io-model-blocking.png)
+![阻塞式I/O](../images/io-model-blocking.png)
 
 最常用最基本的I/O模型，缺省情况下，所有的文件操作都是阻塞的。以UDP为例，在进程空间中调用recvfrom（接收数据），其系统调用直到数据包到达，且被复制到应用进程的缓冲区中或者发送错误时才返回，在此期间一直会等待。进程在从调用recvfrom开始，到它返回的整段时间内都是被阻塞的，因此被称为阻塞I/O模型。
 
@@ -66,13 +66,13 @@ int recvfrom(int socket, void *buf, int len, unsigned int flags,
 
 #### 非阻塞式I/O
 
-![非阻塞式I/O](D:/repo/github/GitBook-IM/v1/images/io-model-noblocking.png)
+![非阻塞式I/O](../images/io-model-noblocking.png)
 
 和阻塞式I/O模型的区别，就是调用recvfrom后立即返回，通过返回值判断是否有数据（EWOULDBLOCK错误代表没有数据）。所以一般搭配sleep使用，但是如何确定轮询检查的间隔，看应用场景。
 
 #### I/O复用模型
 
-![I/O复用模型](D:/repo/github/GitBook-IM/v1/images/io-model-multiplexing.png)
+![I/O复用模型](../images/io-model-multiplexing.png)
 
 这个模型是我们这一章的重点（后面会详细介绍），主要以Linux提供的select/poll/epoll来实现。
 
@@ -84,7 +84,7 @@ int recvfrom(int socket, void *buf, int len, unsigned int flags,
 
 再引用来自于 [[知乎：IO 多路复用是什么意思？罗志宇的回答](https://www.zhihu.com/question/32163005)] 一图：
 
-![i/o multiplexing](D:/repo/github/GitBook-IM/v1/images/io multiplexing.gif)
+![i/o multiplexing](../images/io multiplexing.gif)
 
 >  **I/O multiplexing 这里面的 multiplexing 指的其实是在单个线程通过记录跟踪每一个Sock(I/O流)的状态(对应空管塔里面的Fight progress strip槽)来同时管理多个I/O流**. 发明它的原因，是尽量多的提高服务器的吞吐能力。
 >
@@ -98,19 +98,19 @@ IO复用形成原因具体可以参考这里 [IO复用](https://www.cnblogs.com/
 
 #### 信号驱动式I/O（不常用）
 
-![信号驱动式I/O](D:/repo/github/GitBook-IM/v1/images/io-model-signal-driven.png)
+![信号驱动式I/O](../images/io-model-signal-driven.png)
 
 信号驱动式I/O是指预先告知内核，使得当某个描述符上发生某事时，内核使用信号通知相关进程。如上图，先开启套接接口信号驱动I/O功能，并通过系统调用sigaction执行一个信号处理函数（此系统调用立即返回，进程继续工作，他是非阻塞的）。当数据准备就绪时，就为该进程生产一个SIGIO信号，通过信号回调通知应用程序调用recvfrom来读取数据，并通知主循环函数处理数据。
 
 #### 异步I/O模型（不常用）
 
-![异步I/O模型](D:/repo/github/GitBook-IM/v1/images/io-model-async.png)
+![异步I/O模型](../images/io-model-async.png)
 
 异步I/O：告知内核启动某个操作，并让内核在整个操作完成后（包括将数据从内核复制到用户自己的缓冲区）通知我们。这种模型与信号驱动模型的主要区别是：信号驱动I/O由内核通知我们何时可以开始一个I/O操作，而异步I/O模型由内核通知我们I/O操作何时已经完成。
 
 ### 5种模型对比
 
-![5种模型对比](D:/repo/github/GitBook-IM/v1/images/io-model-compare.png)
+![5种模型对比](../images/io-model-compare.png)
 
 ## 高性能实现：I/O复用
 
@@ -337,7 +337,7 @@ while (true) {
 
 为了解决单进程单线程下只能同时处理一个连接的问题，我们引入多线程技术，核心思路是把 **recv()** 放在单独的线程中执行，这样最外层的while循环得以执行到 **accept()** ，即意味着可接收新的连接的到来，真正的实现了服务器的功能，可以处理很多个TCP客户端。
 
-![io-multiplexing-thread-compare](D:/repo/github/GitBook-IM/v1/images/chapter2/io-multiplexing-thread-compare.png)
+![io-multiplexing-thread-compare](../images/chapter2/io-multiplexing-thread-compare.png)
 
 下面是一个实例（注意，其他部分没变，只是在上一节中while循环的代码中，引入了线程而已）：
 
@@ -1058,7 +1058,7 @@ int main() {
 
 #### 三种I/O模型比较
 
-![select-poll-epoll-compare.png](D:/repo/github/GitBook-IM/v1/images/chapter2/select-poll-epoll-compare.png)[来源](https://zhuanlan.zhihu.com/p/141447239)
+![select-poll-epoll-compare.png](../images/chapter2/select-poll-epoll-compare.png)[来源](https://zhuanlan.zhihu.com/p/141447239)
 
 ### 2种设计模式
 
@@ -1080,7 +1080,7 @@ int main() {
 简单的来说，Reactor模型就是 **non-blocking IO** + **IO Multiplexing**，它的本质是 [事件驱动编程](http://www.blogjava.net/xyz98/archive/2008/11/24/239393.html) 的一种实现，事件驱动在各种界面开发（Web/Windows/iOS/Android）下会经常用到，比如html中 **input（按钮）** 提供了 **[onclick()](https://www.w3school.com.cn/tags/html_ref_eventattributes.asp)** 事件，当鼠标点击时，则由浏览器回调指定的函数进行相关的操作。  
 
 根据《Pattern-oriented software architecture. Volume 2》中对Reactor的解释，主要包含以下5个部分：
-![event-loop-reactor-participants.png](D:/repo/github/GitBook-IM/v1/images/chapter2/event-loop-reactor-participants.png)
+![event-loop-reactor-participants.png](../images/chapter2/event-loop-reactor-participants.png)
 
 - **Handle**（句柄集事件源）：在Linux中指文件描述符，以socket fd举例，其上的I/O事件由操作系统触发，这样我们可以使用 **accept()** 或者 **recv()/read()** 进行新连接的建立和数据收发处理。
 - **Synchronous Event Demultiplexer**（同步事件多路分发器）：通常指select/poll,epoll等I/O多路复用，程序首先将Handle（句柄）以及对应的事件注册到Synchronous Event Demultiplexer上；当有事件到达时，Synchronous Event Demultiplexer就会通知Reactor调用事件处理程序进行处理。
@@ -1092,7 +1092,7 @@ int main() {
 
 时序图如下：
 
-![event-loop-reactor-seq.png](D:/repo/github/GitBook-IM/v1/images/chapter2/event-loop-reactor-seq.png)
+![event-loop-reactor-seq.png](../images/chapter2/event-loop-reactor-seq.png)
 
 1. 应用启动，将关注的事件handle注册到Reactor中。
 2. 调用Reactor，进入无限事件循环，等待注册的事件到来。
@@ -1110,7 +1110,7 @@ int main() {
 
 ##### EventLoop（事件循环）
 
-![waht-event-loop.png](D:/repo/github/GitBook-IM/v1/images/chapter2/waht-event-loop.png)
+![waht-event-loop.png](../images/chapter2/waht-event-loop.png)
 
 EventLoop，也就是事件循环，主要的功能是：
 
@@ -1182,7 +1182,7 @@ void CEventDispatch::StartDispatch(uint32_t wait_timeout)
 
 ##### 单Reactor单线程模型
 
-![io-multiplexing-reactor-single1.png](D:/repo/github/GitBook-IM/v1/images/chapter2/io-multiplexing-reactor-single1.png)
+![io-multiplexing-reactor-single1.png](../images/chapter2/io-multiplexing-reactor-single1.png)
 
 这是最基础简单的模型，所有的I/O操作都在一个线程上完成：
 
@@ -1200,7 +1200,7 @@ void CEventDispatch::StartDispatch(uint32_t wait_timeout)
 
 ##### 单Reactor多线程模型
 
-![io-multiplexing-reactor-multi.png](D:/repo/github/GitBook-IM/v1/images/chapter2/io-multiplexing-reactor-multi.png)
+![io-multiplexing-reactor-multi.png](../images/chapter2/io-multiplexing-reactor-multi.png)
 
 Reactor多线程模型与单线程模型最大区别，就是分离事件循环和事件处理到不同的线程中，具体如下：
 
@@ -1212,7 +1212,7 @@ Reactor多线程模型与单线程模型最大区别，就是分离事件循环�
 
 ##### 多Reactor多线程模型
 
-![io-multiplexing-reactor-multi2.png](D:/repo/github/GitBook-IM/v1/images/chapter2/io-multiplexing-reactor-multi2.png)
+![io-multiplexing-reactor-multi2.png](../images/chapter2/io-multiplexing-reactor-multi2.png)
 
 特点如下：
 
@@ -1238,7 +1238,7 @@ Acceptor线程池只用于客户端的登录、握手和安全认证，一旦链
 
 #### Preactor(Windows)
 
-![io-multiplexing-proactor1.png](D:/repo/github/GitBook-IM/v1/images/chapter2/io-multiplexing-proactor1.png)
+![io-multiplexing-proactor1.png](../images/chapter2/io-multiplexing-proactor1.png)
 
 Proactor主动器模式包含如下角色
 
@@ -1254,7 +1254,7 @@ Proactor主动器模式包含如下角色
 
 时序图如下：
 
-![io-multiplexing-proactor-seq.png](D:/repo/github/GitBook-IM/v1/images/chapter2/io-multiplexing-proactor-seq.png)
+![io-multiplexing-proactor-seq.png](../images/chapter2/io-multiplexing-proactor-seq.png)
 
 1. 应用程序启动，调用异步操作处理器提供的异步操作接口函数，调用之后应用程序和异步操作处理就独立运行；应用程序可以调用新的异步操作，而其它操作可以并发进行；
 2. 应用程序启动Proactor主动器，进行无限的事件循环，等待完成事件到来；
