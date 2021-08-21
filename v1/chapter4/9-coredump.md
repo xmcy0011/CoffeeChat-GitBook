@@ -19,6 +19,8 @@ PS：本文的方法适用于CentOS6.6 - CentOS 7.2
 
 ### 创建coredump.sh
 
+注意，下面的shell脚本执行后，会把coredump文件存储在/data/imcorefile路径下面。
+
 ```bash
 $ vim coredump.sh
 
@@ -30,7 +32,7 @@ $ vim coredump.sh
 # enable coredump whith unlimited file-size for all users
 echo -e "\n# enable coredump whith unlimited file-size for all users\n* soft core unlimited" >> /etc/security/limits.conf
 
-# set the path of core file with permission 777
+# 存储路径，改了这里别忘记同时修改下面的/data/imcorefile
 cd /data && mkdir imcorefile && chmod 777 imcorefile
 
 # format the name of core file.   
@@ -97,7 +99,7 @@ $ ls /data/imcorefile # 在此目录下如果生成了相应的core文件core-te
 
  ### 关闭
 
-  > core文件比较大，有些时候希望关闭这个功能，节省存储空间
+ > core文件比较大，有些时候希望关闭这个功能，节省存储空间
 
 ```bash
 $ ulimit -c 				# 查看core dump状态，0代表关闭，unlimited代表打开

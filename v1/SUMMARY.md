@@ -61,4 +61,6 @@
     * [goim](chapter7/teamtalk.md)
     * [wildfirechat](chapter7/teamtalk.md)
     * [Telegram](chapter7/teamtalk.md)
-    * [OpenIM](chapter7/2-open-im.md)
+    * [OpenIM](chapter7/open-im/README.md)
+* [第七章 心路历程](chapter8/README.md)
+    * [面试经历](chapter8/1-interview.md)
